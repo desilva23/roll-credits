@@ -72,3 +72,53 @@ export function topEvidence(sites: readonly ImportSite[], keep = 3): ImportSite[
     .sort((a, b) => Number(a.inTest) - Number(b.inTest) || a.path.localeCompare(b.path) || a.line - b.line)
     .slice(0, keep);
 }
+
+/**
+ * Below this, the work is genuinely shared and nobody is carrying the project.
+ * Above it, one person increasingly is, and the split leans their way.
+ */
+const SHARED = 0.5;
+
+/** The most a lone maintainer's package can be lifted above an evenly shared one. */
+const MAX_LIFT = 3;
+
+/**
+ * How much to favour a package because one person holds it up.
+ *
+ * Deliberately a slope rather than a flag. A project where the top contributor
+ * wrote 55% is barely different from one at 45%, and a rule that paid them very
+ * differently would be arbitrary. The lift only starts once one person is doing
+ * more than half the work, and reaches its maximum when they do nearly all of it.
+ */
+export function carriedAloneFactor(topShare: number): number {
+  if (!Number.isFinite(topShare) || topShare <= SHARED) return 1;
+  const past = Math.min(1, (topShare - SHARED) / (1 - SHARED));
+  return 1 + (MAX_LIFT - 1) * past;
+}
+
+/** A weight after the people behind the package have been taken into account. */
+export interface AdjustedWeight extends Weight {
+  /** True when one person does most of the work here. */
+  carriedAlone: boolean;
+}
+
+/**
+ * Applies the maintainer signal to a package's weight.
+ *
+ * This is where the project's argument becomes money: a library one person
+ * maintains alone earns more per use than one a staffed team maintains, because
+ * the point is to reach the people nobody else is paying.
+ */
+export function adjustForMaintainers(weight: Weight, shares: readonly number[]): AdjustedWeight {
+  const top = shares.length === 0 ? 0 : Math.max(...shares);
+  const factor = carriedAloneFactor(top);
+  if (factor === 1) return { ...weight, carriedAlone: false };
+
+  const percent = Math.round(top * 100);
+  return {
+    pkg: weight.pkg,
+    score: weight.score * factor,
+    reason: `${weight.reason} One maintainer wrote ${percent}% of it, so it is weighted ${factor.toFixed(1)}x.`,
+    carriedAlone: true,
+  };
+}

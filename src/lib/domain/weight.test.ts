@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { type ImportSite } from "./imports";
-import { type Weighable, topEvidence, weighPackages } from "./weight";
+import { type Weighable, adjustForMaintainers, carriedAloneFactor, topEvidence, weighPackages } from "./weight";
 
 const pkg = (over: Partial<Weighable> = {}): Weighable => ({
   name: "zod",
@@ -81,5 +81,54 @@ describe("topEvidence", () => {
     const sites = [site("c.ts", 2), site("a.ts", 1)];
     topEvidence(sites);
     expect(sites[0]?.path).toBe("c.ts");
+  });
+});
+
+describe("carriedAloneFactor", () => {
+  it("does not lift a project whose work is shared", () => {
+    expect(carriedAloneFactor(0.24)).toBe(1);
+    expect(carriedAloneFactor(0.5)).toBe(1);
+  });
+
+  it("lifts more as one person does more of the work", () => {
+    expect(carriedAloneFactor(0.6)).toBeGreaterThan(1);
+    expect(carriedAloneFactor(0.89)).toBeGreaterThan(carriedAloneFactor(0.6));
+    expect(carriedAloneFactor(0.98)).toBeGreaterThan(carriedAloneFactor(0.89));
+  });
+
+  it("never lifts beyond the cap", () => {
+    expect(carriedAloneFactor(1)).toBeCloseTo(3);
+    expect(carriedAloneFactor(1.5)).toBeLessThanOrEqual(3);
+  });
+
+  it("treats a near-tie as a near-tie, not a cliff", () => {
+    expect(carriedAloneFactor(0.51) - carriedAloneFactor(0.49)).toBeLessThan(0.1);
+  });
+
+  it.each([Number.NaN, Number.POSITIVE_INFINITY, -1])("is safe for %s", (share) => {
+    expect(carriedAloneFactor(share)).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("adjustForMaintainers", () => {
+  const base = { pkg: "zod", score: 2, reason: "Imported in 5 places in shipped code." };
+
+  it("leaves a team-maintained package alone", () => {
+    const out = adjustForMaintainers(base, [0.29, 0.25, 0.24]);
+    expect(out.score).toBe(2);
+    expect(out.carriedAlone).toBe(false);
+    expect(out.reason).toBe(base.reason);
+  });
+
+  it("lifts a package one person carries, and explains why", () => {
+    const out = adjustForMaintainers(base, [0.89, 0.05, 0.03]);
+    expect(out.score).toBeGreaterThan(2);
+    expect(out.carriedAlone).toBe(true);
+    expect(out.reason).toContain("89%");
+    expect(out.reason).toContain("Imported in 5 places");
+  });
+
+  it("does not lift a package with nobody behind it", () => {
+    expect(adjustForMaintainers(base, []).score).toBe(2);
   });
 });

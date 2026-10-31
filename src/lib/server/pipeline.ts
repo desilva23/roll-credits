@@ -3,7 +3,7 @@ import { type Maintainer } from "@/lib/domain/people";
 import { type RepoRef } from "@/lib/domain/repo-ref";
 import { type Allocation, type WeightedPackage, splitBudget } from "@/lib/domain/split";
 import { type ImportSite } from "@/lib/domain/imports";
-import { topEvidence, weighPackages } from "@/lib/domain/weight";
+import { adjustForMaintainers, topEvidence, weighPackages } from "@/lib/domain/weight";
 import { resolvePeople } from "./people";
 import { scanRepo } from "./scan";
 
@@ -51,22 +51,29 @@ export async function planPayments(ref: RepoRef, budgetCents: number): Promise<P
   const people = new Map((await resolvePeople(earning.map((p) => p.name))).map((p) => [p.pkg, p]));
 
   const packages: PlannedPackage[] = earning.map((p) => {
-    const weight = weights.get(p.name) ?? { score: 0, reason: "" };
+    const weight = weights.get(p.name) ?? { pkg: p.name, score: 0, reason: "" };
     const found = people.get(p.name) ?? {
       repo: null,
       maintainers: [],
       alreadyFunded: false,
       singleMaintainer: false,
     };
+    // The maintainer signal is applied here, once the people are known: a
+    // library one person holds up earns more per use than one a staffed team
+    // maintains, because the point is to reach whoever nobody else is paying.
+    const adjusted = adjustForMaintainers(
+      weight,
+      found.maintainers.map((m) => m.share),
+    );
     return {
       pkg: p.name,
-      score: weight.score,
-      reason: weight.reason,
+      score: adjusted.score,
+      reason: adjusted.reason,
       evidence: topEvidence(p.sites),
       repo: found.repo,
       maintainers: found.maintainers,
       alreadyFunded: found.alreadyFunded,
-      singleMaintainer: found.singleMaintainer,
+      singleMaintainer: adjusted.carriedAlone,
     };
   });
 
