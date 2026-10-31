@@ -150,6 +150,9 @@ const INITIAL = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("") as readonly string[];
 /** Indexing is always in range after a modulo, but the type system cannot see that. */
 function pick(list: readonly string[], at: number): string {
   const value = list[at % list.length];
+  // The lists are compile-time constants and the modulo keeps the index in
+  // range; this guards the type, not a case that can happen.
+  /* v8 ignore next */
   if (value === undefined) throw new Error("empty name list");
   return value;
 }

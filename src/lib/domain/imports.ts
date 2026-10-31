@@ -52,6 +52,9 @@ export function packageOfSpecifier(specifier: string): string | null {
   if (!isBareSpecifier(specifier)) return null;
 
   const [first, second] = specifier.split("/");
+  // `split` always yields at least one part and the empty specifier was already
+  // rejected, so this only exists to satisfy the index-safety check.
+  /* v8 ignore next */
   if (first === undefined || first === "") return null;
   if (!first.startsWith("@")) return first;
   return second === undefined || second === "" ? null : `${first}/${second}`;
@@ -75,6 +78,8 @@ export function findImportSites(path: string, source: string, wanted: ReadonlySe
     let match: RegExpExecArray | null;
     while ((match = SPECIFIER.exec(raw)) !== null) {
       const specifier = match[1];
+      // The pattern has one capturing group, so a match always carries it.
+      /* v8 ignore next */
       if (specifier === undefined) continue;
       const pkg = packageOfSpecifier(specifier);
       if (pkg === null || !wanted.has(pkg)) continue;
