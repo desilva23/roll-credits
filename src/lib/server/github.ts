@@ -1,5 +1,6 @@
 import "server-only";
 import { isTestPath } from "@/lib/domain/imports";
+import { type RawContributor } from "@/lib/domain/people";
 import { type RepoRef, repoSlug } from "@/lib/domain/repo-ref";
 
 const API = "https://api.github.com";
@@ -86,4 +87,35 @@ export async function listSourceFiles(ref: RepoRef, branch: string): Promise<str
 function rank(path: string): number {
   if (isTestPath(path)) return 2;
   return SOURCE_DIR.test(path) ? 0 : 1;
+}
+
+/** Everyone who has committed, busiest first, as GitHub ranks them. */
+export async function contributors(ref: RepoRef): Promise<RawContributor[]> {
+  try {
+    const rows = (await api(`/repos/${repoSlug(ref)}/contributors?per_page=30`)) as {
+      login?: string;
+      contributions?: number;
+    }[];
+    return rows.flatMap((row) =>
+      typeof row.login === "string" && typeof row.contributions === "number"
+        ? [{ login: row.login, contributions: row.contributions }]
+        : [],
+    );
+  } catch {
+    // A repository can be empty, moved or too large for this endpoint. None of
+    // those should fail a whole scan, so it contributes no people instead.
+    return [];
+  }
+}
+
+/** Whether the project already asks for money, and where. */
+export async function fundingLinks(ref: RepoRef, branch: string): Promise<string[]> {
+  const raw = await fetchFile(ref, branch, ".github/FUNDING.yml").catch(() => null);
+  if (raw === null) return [];
+  return raw
+    .split("\n")
+    .map((line) => line.replace(/#.*$/, "").trim())
+    .filter((line) => line !== "" && line.includes(":"))
+    .map((line) => line.replace(/^-\s*/, ""))
+    .slice(0, 10);
 }
