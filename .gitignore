@@ -1,0 +1,10 @@
+PLAN.md
+OFFICIAL_RULES.md
+.env*
+!.env.example
+node_modules/
+.next/
+.vercel/
+coverage/
+*.tsbuildinfo
+.DS_Store
