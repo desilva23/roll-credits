@@ -155,8 +155,8 @@ export async function readRepo(repo: string, budgetCents: number, onStep: (messa
   return plan;
 }
 
-export const startPayouts = (orderId: string, repo: string): Promise<PayoutRun> =>
-  post<PayoutRun>("/api/payouts", { orderId, repo });
+/** Starts the payouts for a captured order. The server reads which repository from PayPal. */
+export const startPayouts = (orderId: string): Promise<PayoutRun> => post<PayoutRun>("/api/payouts", { orderId });
 
 export const checkPayouts = (run: PayoutRun): Promise<PayoutRun> =>
   post<PayoutRun>("/api/payouts", { batchId: run.batchId, items: run.items });

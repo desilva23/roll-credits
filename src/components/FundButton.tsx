@@ -12,10 +12,13 @@ interface Status {
 export function FundButton({
   clientId,
   budgetCents,
+  repo,
   onCaptured,
 }: {
   clientId: string;
   budgetCents: number;
+  /** Sealed into the PayPal order, so the payout can only pay this project's maintainers. */
+  repo: string;
   onCaptured: (orderId: string) => void;
 }): React.JSX.Element {
   const [status, setStatus] = useState<Status>({ kind: "loading", message: "Loading PayPal…" });
@@ -70,10 +73,10 @@ export function FundButton({
     const current = session.current;
     if (current === null) return;
     setStatus({ kind: "working", message: "Opening PayPal…" });
-    current.start({ presentationMode: "auto" }, createOrder(budgetCents)).catch(() => {
+    current.start({ presentationMode: "auto" }, createOrder(budgetCents, repo)).catch(() => {
       setStatus({ kind: "error", message: "Could not start the payment." });
     });
-  }, [budgetCents]);
+  }, [budgetCents, repo]);
 
   return (
     <div className="fund">

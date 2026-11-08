@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { parseRepoRef } from "@/lib/domain/repo-ref";
+import { capturedOrder } from "@/lib/server/orders";
 import { type PayoutItem, readPayouts, sendPayouts } from "@/lib/server/payouts";
 import { reconcile } from "@/lib/server/reconcile";
-import { paypal } from "@/lib/server/paypal";
 import { planPayments } from "@/lib/server/pipeline";
 import { z } from "@/lib/zod";
 
@@ -12,7 +11,7 @@ export const maxDuration = 60;
 const ORDER_ID = /^[A-Z0-9]{5,30}$/;
 const BATCH_ID = /^[A-Z0-9]{5,30}$/;
 
-const startSchema = z.object({ orderId: z.string().regex(ORDER_ID), repo: z.string().min(1).max(200) });
+const startSchema = z.object({ orderId: z.string().regex(ORDER_ID) });
 const pollSchema = z.object({
   batchId: z.string().regex(BATCH_ID),
   items: z
@@ -27,30 +26,6 @@ const pollSchema = z.object({
     )
     .max(40),
 });
-
-interface OrderView {
-  status?: string;
-  purchase_units?: { payments?: { captures?: { status?: string; amount?: { value?: string } }[] } }[];
-}
-
-/** The completed capture on an order, if there is one. */
-function completedCapture(order: OrderView): { value?: string } | null {
-  if (order.status !== "COMPLETED") return null;
-  const capture = order.purchase_units?.[0]?.payments?.captures?.[0];
-  return capture?.status === "COMPLETED" ? (capture.amount ?? null) : null;
-}
-
-/** Confirms with PayPal that the order was really captured, and for how much. */
-async function capturedCents(orderId: string): Promise<number | null> {
-  const { ok, body } = await paypal(`/v2/checkout/orders/${orderId}`, { method: "GET" });
-  if (!ok) return null;
-
-  const amount = completedCapture(body as OrderView);
-  if (amount?.value === undefined) return null;
-
-  const cents = Math.round(Number(amount.value) * 100);
-  return Number.isSafeInteger(cents) ? cents : null;
-}
 
 /** Still moving, so there is nothing settled to reconcile yet. */
 const IN_FLIGHT = new Set(["PENDING", "PROCESSING"]);
@@ -81,17 +56,18 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (poll.success) return pollRun(poll.data.batchId, poll.data.items);
 
   const start = startSchema.safeParse(raw);
-  if (!start.success) return NextResponse.json({ error: "give an order and a repository" }, { status: 400 });
+  if (!start.success) return NextResponse.json({ error: "give an order id" }, { status: 400 });
 
-  // The amount comes from PayPal, never from the browser, and no money moves
-  // until PayPal itself confirms the capture completed.
-  const cents = await capturedCents(start.data.orderId);
-  if (cents === null || cents <= 0) {
+  // Both the amount and the repository come from PayPal's own record of the
+  // order, never from the request, and no money moves until PayPal confirms
+  // the capture completed.
+  const captured = await capturedOrder(start.data.orderId);
+  if (captured === null) {
     return NextResponse.json({ error: "that order has not been captured" }, { status: 402 });
   }
 
   try {
-    const plan = await planPayments(parseRepoRef(start.data.repo), cents);
+    const plan = await planPayments(captured.ref, captured.cents);
     if (plan.allocations.length === 0) {
       return NextResponse.json({ error: "nobody in this repository can be paid" }, { status: 422 });
     }

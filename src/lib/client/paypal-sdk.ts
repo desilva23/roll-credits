@@ -50,12 +50,15 @@ export async function loadPayPal(clientId: string): Promise<PayPalInstance> {
   return sdk.createInstance({ clientId, components: ["paypal-payments"], pageType: "checkout" });
 }
 
-/** Asks the server to open an order. The server decides the amount. */
-export async function createOrder(budgetCents: number): Promise<{ orderId: string }> {
+/**
+ * Asks the server to open an order. The server decides the amount, and seals
+ * the repository into the order so the payout can only pay its maintainers.
+ */
+export async function createOrder(budgetCents: number, repo: string): Promise<{ orderId: string }> {
   const res = await fetch("/api/orders", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ budgetCents }),
+    body: JSON.stringify({ budgetCents, repo }),
   });
   if (!res.ok) throw new Error("could not create the order");
   return (await res.json()) as { orderId: string };

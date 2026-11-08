@@ -40,7 +40,7 @@ export function PlanView({
         {paying ? (
           <p className="hint">Sending the payouts through PayPal…</p>
         ) : (
-          <FundButton clientId={clientId} budgetCents={budgetCents} onCaptured={onCaptured} />
+          <FundButton clientId={clientId} budgetCents={budgetCents} repo={plan.repo} onCaptured={onCaptured} />
         )}
       </section>
     </>
