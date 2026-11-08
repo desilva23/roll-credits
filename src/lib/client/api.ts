@@ -127,7 +127,7 @@ function handle(text: string, onStep: (message: string) => void): Plan | null {
  * Reads a repository, calling `onStep` as each stage finishes.
  *
  * The response is newline-delimited JSON rather than one object, so the page
- * can say what is happening across the twenty seconds the read takes.
+ * can say what is happening across the seconds a first read takes.
  */
 export async function readRepo(repo: string, budgetCents: number, onStep: (message: string) => void): Promise<Plan> {
   const res = await fetch("/api/plan", {

@@ -40,7 +40,7 @@ function headers(): Record<string, string> {
 
 /**
  * Public repository data barely changes, and a judge trying the demo should
- * not wait fourteen seconds twice. Caching the upstream reads means a repeat
+ * not sit through a cold read twice. Caching the upstream reads means a repeat
  * run is close to instant and stays inside GitHub's and npm's rate limits.
  * Nothing on the money path is cached; see src/lib/server/paypal.ts.
  */

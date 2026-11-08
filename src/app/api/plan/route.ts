@@ -26,8 +26,8 @@ function problem(error: unknown): string {
  * Streams the reading as newline-delimited JSON: a `step` line each time the
  * pipeline finishes a stage, then one `plan` line, or one `error`.
  *
- * Reading a repository takes the better part of twenty seconds, nearly all of
- * it waiting on GitHub, npm and the model. Saying what is happening is not
+ * A first read of a repository takes several seconds, nearly all of it
+ * waiting on GitHub, npm and the model. Saying what is happening is not
  * decoration — without it the page is silent long enough to look broken.
  */
 export async function POST(request: Request): Promise<Response> {

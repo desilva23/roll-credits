@@ -20,7 +20,7 @@ payment processor.
 
 ## A read, end to end
 
-A read takes about fourteen seconds cold and three warm. The endpoint streams a line as each stage finishes, so the
+A read takes about seven seconds cold and under two warm, measured on the deployed site. The endpoint streams a line as each stage finishes, so the
 page can say what is happening rather than sitting silent.
 
 | Stage                     | Does what                                                                                                                                                                                     | Where                                                                                                |
@@ -99,8 +99,8 @@ says the reporting has not caught up rather than reporting a disagreement.
 
 ## Caching
 
-GitHub and npm reads are cached for an hour: public data that barely changes, and the difference between a
-fourteen-second wait and a three-second one. Every PayPal call sets `no-store`.
+GitHub and npm reads are cached for an hour: public data that barely changes. With the agent's judgements cached as
+well, a repeat read takes under two seconds rather than seven. Every PayPal call sets `no-store`.
 
 The agent's judgements are cached for a week, keyed on the models, the prompt and the exact evidence the agent was
 shown. That serves two ends. The same code is judged the same way on a second read, so the figures in a demo are the
