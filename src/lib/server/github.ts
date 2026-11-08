@@ -38,8 +38,16 @@ function headers(): Record<string, string> {
   };
 }
 
+/**
+ * Public repository data barely changes, and a judge trying the demo should
+ * not wait fourteen seconds twice. Caching the upstream reads means a repeat
+ * run is close to instant and stays inside GitHub's and npm's rate limits.
+ * Nothing on the money path is cached; see src/lib/server/paypal.ts.
+ */
+const UPSTREAM_CACHE = { next: { revalidate: 3600 } } as const;
+
 async function api(path: string): Promise<unknown> {
-  const res = await fetch(`${API}${path}`, { headers: headers(), cache: "no-store" });
+  const res = await fetch(`${API}${path}`, { headers: headers(), ...UPSTREAM_CACHE });
   if (res.status === 404) throw new GitHubError("repository or file not found", 404);
   if (res.status === 403 || res.status === 429) {
     throw new GitHubError("GitHub rate limit reached; set GITHUB_TOKEN", 429);
@@ -58,7 +66,7 @@ export async function defaultBranch(ref: RepoRef): Promise<string> {
 export async function fetchFile(ref: RepoRef, branch: string, path: string): Promise<string | null> {
   const res = await fetch(`https://raw.githubusercontent.com/${repoSlug(ref)}/${branch}/${path}`, {
     headers: headers(),
-    cache: "no-store",
+    ...UPSTREAM_CACHE,
   });
   if (res.status === 404) return null;
   if (!res.ok) throw new GitHubError(`could not read ${path}`, res.status);

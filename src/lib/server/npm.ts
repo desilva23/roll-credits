@@ -38,7 +38,8 @@ function fundingUrls(funding: unknown): string[] {
 export async function packageFacts(name: string): Promise<PackageFacts> {
   const res = await fetch(`${REGISTRY}/${encodeURIComponent(name)}/latest`, {
     headers: { Accept: "application/json", "User-Agent": "roll-credits" },
-    cache: "no-store",
+    // Registry metadata is public and slow-moving; see github.ts for why.
+    next: { revalidate: 3600 },
   });
   if (!res.ok) return { repo: null, funding: [], description: null };
 
