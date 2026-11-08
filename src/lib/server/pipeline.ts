@@ -1,6 +1,14 @@
 import "server-only";
 import { type AgentInput, judgePackages } from "@/lib/ai/attribute";
 import { factorFromImportance } from "@/lib/ai/contract";
+import {
+  type Comparison,
+  type Declared,
+  type LoneMaintainer,
+  compareSplits,
+  loneMaintainer,
+  totalsByPackage,
+} from "@/lib/domain/compare";
 import { type ImportSite } from "@/lib/domain/imports";
 import { type Maintainer } from "@/lib/domain/people";
 import { type RepoRef, repoSlug } from "@/lib/domain/repo-ref";
@@ -35,6 +43,10 @@ export interface PaymentPlan {
   totalCents: number;
   belowMinimum: { name: string; cents: number }[];
   unpayable: { pkg: string; reason: string }[];
+  /** The same budget split evenly across the dependency list, beside this plan. */
+  comparison: Comparison;
+  /** The person carrying a package alone, paid both ways. Null when nobody is. */
+  lone: LoneMaintainer | null;
 }
 
 /** Looking up people is the slow part, so only the packages that can earn are resolved. */
@@ -115,7 +127,7 @@ export async function planPayments(
 }
 
 interface Finishing {
-  scan: { repo: string; filesRead: number };
+  scan: { repo: string; filesRead: number; packages: Declared[] };
   budgetCents: number;
   packages: PlannedPackage[];
   agentUsed: boolean;
@@ -143,6 +155,8 @@ function finish({ scan, budgetCents, packages, agentUsed, say }: Finishing): Pay
     weighted.length > 0 ? splitBudget(budgetCents, weighted) : { allocations: [], totalCents: 0, belowMinimum: [] };
   say(`Splitting the budget across ${split.allocations.length} people`);
 
+  const comparison = compareSplits(budgetCents, scan.packages, totalsByPackage(split.allocations));
+
   return {
     repo: scan.repo,
     budgetCents,
@@ -153,5 +167,7 @@ function finish({ scan, budgetCents, packages, agentUsed, say }: Finishing): Pay
     totalCents: split.totalCents,
     belowMinimum: split.belowMinimum,
     unpayable,
+    comparison,
+    lone: loneMaintainer(packages, split.allocations, comparison),
   };
 }

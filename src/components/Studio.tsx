@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { CastList } from "@/components/CastList";
+import { CompareSummary } from "@/components/CompareSummary";
 import { CreditsRoll } from "@/components/CreditsRoll";
 import { FundButton } from "@/components/FundButton";
 import { LedgerGrid } from "@/components/LedgerGrid";
@@ -82,6 +83,7 @@ export function Studio({ clientId }: { clientId: string }): React.JSX.Element {
       {problem === null ? null : <p className="notice">{problem}</p>}
       {plan === null ? null : (
         <>
+          <CompareSummary plan={plan} />
           <ViewTabs view={view} onChange={setView} />
           {view === "credits" ? <CastList plan={plan} /> : <LedgerGrid plan={plan} />}
 

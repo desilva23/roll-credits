@@ -1,3 +1,5 @@
+import { apportion } from "./apportion";
+
 /**
  * Turns a budget into what each person is paid.
  *
@@ -33,6 +35,8 @@ export interface Allocation {
   cents: number;
   /** The packages behind this amount, largest contribution first. */
   packages: string[];
+  /** Exactly how many of `cents` each package earned. Always sums to `cents`. */
+  byPackage: Record<string, number>;
 }
 
 export interface SplitResult {
@@ -159,6 +163,9 @@ export function splitBudget(budgetCents: number, packages: readonly WeightedPack
         name: pot.name,
         cents,
         packages: [...pot.packages.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([p]) => p),
+        // A person who maintains two packages earned more from one than the
+        // other; this records which, to the cent, rather than halving it.
+        byPackage: Object.fromEntries(apportion(cents, [...pot.packages.entries()])),
       }));
       return {
         allocations,

@@ -33,25 +33,31 @@ interface Row {
   people: number;
   topShare: number | null;
   funded: boolean;
-  cents: number;
+  byList: number;
+  byCode: number;
 }
 
+/**
+ * Every declared dependency, including the ones nothing imports, so the even
+ * split and this plan can be read side by side. Counts are the real totals
+ * from the scan, not the few evidence lines the credits view shows.
+ */
 function rowsFrom(plan: Plan): Row[] {
-  const paid = new Map<string, number>();
-  for (const a of plan.allocations) {
-    for (const pkg of a.packages) paid.set(pkg, (paid.get(pkg) ?? 0) + a.cents / a.packages.length);
-  }
-
-  return plan.packages.map((p) => ({
-    pkg: p.pkg,
-    role: p.role ?? "—",
-    shipped: p.evidence.filter((e) => !e.inTest).length,
-    tests: p.evidence.filter((e) => e.inTest).length,
-    people: p.maintainers.length,
-    topShare: p.maintainers[0]?.share ?? null,
-    funded: p.alreadyFunded,
-    cents: Math.round(paid.get(p.pkg) ?? 0),
-  }));
+  const known = new Map(plan.packages.map((p) => [p.pkg, p]));
+  return plan.comparison.rows.map((row) => {
+    const p = known.get(row.pkg);
+    return {
+      pkg: row.pkg,
+      role: p?.role ?? "—",
+      shipped: row.productUses,
+      tests: row.testUses,
+      people: p?.maintainers.length ?? 0,
+      topShare: p?.maintainers[0]?.share ?? null,
+      funded: p?.alreadyFunded ?? false,
+      byList: row.byListCents,
+      byCode: row.byCodeCents,
+    };
+  });
 }
 
 const percent = (p: ValueFormatterParams<Row, number | null>): string =>
@@ -94,9 +100,16 @@ export function LedgerGrid({ plan }: { plan: Plan }): React.JSX.Element {
         valueFormatter: (p: ValueFormatterParams<Row, boolean>) => (p.value === true ? "yes" : "no"),
       },
       {
-        field: "cents",
-        headerName: "Paid",
-        width: 110,
+        field: "byList",
+        headerName: "By dependency list",
+        width: 170,
+        type: "numericColumn",
+        valueFormatter: (p: ValueFormatterParams<Row, number>) => money(p.value ?? 0),
+      },
+      {
+        field: "byCode",
+        headerName: "Roll Credits",
+        width: 140,
         type: "numericColumn",
         sort: "desc",
         valueFormatter: (p: ValueFormatterParams<Row, number>) => (p.value === 0 ? "—" : money(p.value ?? 0)),

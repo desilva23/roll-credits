@@ -460,3 +460,54 @@ a {
 .steps__now {
   color: var(--light);
 }
+
+/* ---------- against a dependency list ---------- */
+
+.compare__table {
+  width: 100%;
+  margin-top: 1.25rem;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.compare__table th,
+.compare__table td {
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+  font-weight: 400;
+  vertical-align: baseline;
+}
+
+.compare__table thead th {
+  padding-top: 0;
+  color: var(--dim);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+}
+
+.compare__table tbody th {
+  padding-right: 1rem;
+  text-align: left;
+  color: var(--paper);
+  font-size: 0.875rem;
+}
+
+.compare__table td {
+  width: 9.5rem;
+  color: var(--dim);
+  font-family: var(--font-display), serif;
+  font-size: 1.25rem;
+}
+
+.compare__table td.compare__ours {
+  color: var(--light);
+}
+
+@media (max-width: 34rem) {
+  .compare__table td {
+    width: auto;
+    padding-left: 0.75rem;
+    font-size: 1.05rem;
+  }
+}

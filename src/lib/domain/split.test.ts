@@ -10,7 +10,9 @@ const solo = (id: string, name = id): { id: string; name: string; shareOfPackage
 describe("splitBudget", () => {
   it("gives the whole budget to the only maintainer", () => {
     const result = splitBudget(2500, [{ pkg: "zod", weight: 1, maintainers: [solo("a")] }]);
-    expect(result.allocations).toEqual([{ id: "a", name: "a", cents: 2500, packages: ["zod"] }]);
+    expect(result.allocations).toEqual([
+      { id: "a", name: "a", cents: 2500, packages: ["zod"], byPackage: { zod: 2500 } },
+    ]);
     expect(result.totalCents).toBe(2500);
   });
 
@@ -79,6 +81,14 @@ describe("splitBudget", () => {
     expect(splitBudget(1000, input)).toEqual(splitBudget(1000, input));
   });
 
+  it("records exactly what each package earned a person, by weight rather than halving", () => {
+    const result = splitBudget(1000, [
+      { pkg: "big", weight: 3, maintainers: [solo("a")] },
+      { pkg: "small", weight: 1, maintainers: [solo("a")] },
+    ]);
+    expect(result.allocations[0]?.byPackage).toEqual({ big: 750, small: 250 });
+  });
+
   it("lists the packages that earned the money, largest first", () => {
     const result = splitBudget(1000, [
       { pkg: "small", weight: 1, maintainers: [solo("a")] },
@@ -139,6 +149,7 @@ describe("splitBudget invariants under random input", () => {
       for (const a of result.allocations) {
         expect(Number.isSafeInteger(a.cents)).toBe(true);
         expect(a.cents).toBeGreaterThanOrEqual(MINIMUM_PAYOUT_CENTS);
+        expect(Object.values(a.byPackage).reduce((sum, c) => sum + c, 0)).toBe(a.cents);
       }
       const ids = result.allocations.map((a) => a.id);
       expect(new Set(ids).size).toBe(ids.length);

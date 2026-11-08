@@ -31,6 +31,36 @@ export interface Allocation {
   name: string;
   cents: number;
   packages: string[];
+  /** Exactly what each package earned this person; sums to `cents`. */
+  byPackage: Record<string, number>;
+}
+
+export interface ComparisonRow {
+  pkg: string;
+  productUses: number;
+  testUses: number;
+  imported: boolean;
+  ships: boolean;
+  byListCents: number;
+  byCodeCents: number;
+}
+
+export interface SplitSummary {
+  neverImportedCents: number;
+  neverShipsCents: number;
+}
+
+export interface Comparison {
+  rows: ComparisonRow[];
+  byList: SplitSummary;
+  byCode: SplitSummary;
+}
+
+export interface LoneMaintainer {
+  pkg: string;
+  name: string;
+  byListCents: number;
+  byCodeCents: number;
 }
 
 export interface Plan {
@@ -43,6 +73,8 @@ export interface Plan {
   totalCents: number;
   belowMinimum: { name: string; cents: number }[];
   unpayable: { pkg: string; reason: string }[];
+  comparison: Comparison;
+  lone: LoneMaintainer | null;
 }
 
 export interface PayoutItem {

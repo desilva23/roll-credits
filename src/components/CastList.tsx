@@ -5,10 +5,9 @@ function longest(plan: Plan): number {
   return Math.max(...plan.packages.map((p) => p.score), 1);
 }
 
+/** What this package earned across everyone, exactly, from the server's breakdown. */
 function paidFor(plan: Plan, pkg: string): number {
-  return plan.allocations
-    .filter((a) => a.packages.includes(pkg))
-    .reduce((sum, a) => sum + a.cents / a.packages.length, 0);
+  return plan.comparison.rows.find((row) => row.pkg === pkg)?.byCodeCents ?? 0;
 }
 
 /**
@@ -34,7 +33,7 @@ export function CastList({ plan }: { plan: Plan }): React.JSX.Element {
             <li key={p.pkg} className="cast__item">
               <div className="cast__top">
                 <span className="cast__pkg">{p.pkg}</span>
-                <span className="cast__amount">{amount > 0 ? money(Math.round(amount)) : "—"}</span>
+                <span className="cast__amount">{amount > 0 ? money(amount) : "—"}</span>
               </div>
 
               {p.role === null ? null : <p className="cast__role">{p.role}</p>}
