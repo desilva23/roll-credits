@@ -47,6 +47,28 @@ Roll Credits reads what the code actually does instead.
 The same reading has two views. **Credits** makes the argument. **Ledger**, built with AG Grid, is the table behind
 it: sort by what was paid, by who is carrying a project alone, or by who already has funding.
 
+## Use it from a coding agent
+
+Coding agents install open-source packages all day and never see a sponsor button. Roll Credits is also an
+[MCP](https://modelcontextprotocol.io) server, so an agent can ask who a project depends on and open a payment for
+them. To add it to Claude Code:
+
+```bash
+claude mcp add --transport http roll-credits https://roll-credits-desilva23s-projects.vercel.app/api/mcp
+```
+
+Then ask, in the project you are working on: _"Who should this project credit?"_ or _"Credit the maintainers this
+project depends on with $10."_
+
+| Tool                 | Does                                                                                                 | Moves money?                              |
+| -------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `who_to_credit`      | Reads the repository and reports who it depends on, with evidence and the dependency-list comparison | No                                        |
+| `credit_maintainers` | Opens a PayPal payment and returns an approval link                                                  | Only after a person approves it in PayPal |
+
+The agent proposes; a person approves; code decides every amount. After approval PayPal returns to Roll Credits,
+which sends the payouts and rolls the credits. The server is stateless JSON over Streamable HTTP, tested with the
+official MCP client SDK. See [`src/app/api/mcp/route.ts`](src/app/api/mcp/route.ts).
+
 ## What is real, and what is not
 
 |              |                                                                                                                     |
@@ -72,25 +94,28 @@ maintainer was contacted, named or paid.
 | **PayPal**  | JS SDK v6 (`createPayPalOneTimePaymentSession`), Orders v2, Payouts, webhooks with signature verification                                                                      |
 | **AI**      | Groq — `openai/gpt-oss-120b`, with strict JSON-schema output                                                                                                                   |
 | **AG Grid** | AG Grid Community (MIT) for the ledger view, themed with the Theming API so it wears the page's own colours — [`src/components/LedgerGrid.tsx`](src/components/LedgerGrid.tsx) |
+| **MCP**     | A Model Context Protocol server, so coding agents can credit the people a project depends on — [`src/app/api/mcp/route.ts`](src/app/api/mcp/route.ts)                          |
 | **Stack**   | Next.js App Router, TypeScript in strict mode, Zod, Vitest, deployed on Vercel                                                                                                 |
 
 ## Where the money decisions live
 
 The model argues about importance. It never sees or sets an amount.
 
-| Decision                                         | Made by                                                                                                        |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| What a package does here, how load-bearing it is | The agent — [`src/lib/ai/attribute.ts`](src/lib/ai/attribute.ts)                                               |
-| How far the agent may move a weight              | Clamped, 0.5×–2× — [`src/lib/ai/contract.ts`](src/lib/ai/contract.ts)                                          |
-| Every amount, in integer cents                   | Code alone — [`src/lib/domain/split.ts`](src/lib/domain/split.ts)                                              |
-| Whether money moves at all                       | The server, after PayPal confirms the capture — [`src/app/api/payouts/route.ts`](src/app/api/payouts/route.ts) |
+| Decision                                         | Made by                                                                                                                                       |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| What a package does here, how load-bearing it is | The agent — [`src/lib/ai/attribute.ts`](src/lib/ai/attribute.ts)                                                                              |
+| How far the agent may move a weight              | Clamped, 0.5×–2× — [`src/lib/ai/contract.ts`](src/lib/ai/contract.ts)                                                                         |
+| Every amount, in integer cents                   | Code alone — [`src/lib/domain/split.ts`](src/lib/domain/split.ts)                                                                             |
+| Whether money moves at all                       | The server, after PayPal confirms the capture — [`src/app/api/payouts/route.ts`](src/app/api/payouts/route.ts)                                |
+| Which repository's maintainers are paid          | Sealed into the PayPal order when it is created, read back from PayPal before paying — [`src/lib/server/orders.ts`](src/lib/server/orders.ts) |
 
 Rules the code holds to, each with tests:
 
 - Payouts always sum to exactly the amount PayPal captured.
 - No payout before the capture is verified server-side, with PayPal as the source of the amount.
 - One payout batch id per order, so a retried request is refused by PayPal rather than paying twice.
-- No amount ever comes from the browser or the model.
+- No amount ever comes from the browser or the model, and neither does the choice of who is paid: the browser
+  sends an order id, and the amount and repository are read back from PayPal.
 - Webhooks are rejected unless their signature verifies against the raw request bytes.
 - The app cannot reach live PayPal.
 
@@ -122,10 +147,10 @@ npm run check   # formatting, linting, types and tests
 | **Technological implementation** | Four PayPal surfaces working together — JS SDK v6, Orders, Payouts and signature-verified webhooks, an agent reading real code under a clamped contract, and money rules held by tests | [`src/lib/server/`](src/lib/server/), [`src/lib/ai/`](src/lib/ai/), [`src/lib/domain/split.test.ts`](src/lib/domain/split.test.ts) |
 | **Design**                       | A complete path from a pasted URL to money arriving. Two deliberate worlds: a monospaced cutting room, and cinema. The AG Grid ledger is themed to match, not left as a default grid   | [`src/app/globals.css`](src/app/globals.css), [`src/components/LedgerGrid.tsx`](src/components/LedgerGrid.tsx)                     |
 | **Potential impact**             | Measured on a real repository, not asserted. The naive split's largest payee was the test runner; this one's is a maintainer working alone                                             | [`src/lib/domain/weight.ts`](src/lib/domain/weight.ts)                                                                             |
-| **Innovation**                   | Pays by what the code calls, not what it lists. Favours whoever is unsupported. Names nobody without consent                                                                           | [`src/lib/domain/stage-name.ts`](src/lib/domain/stage-name.ts)                                                                     |
+| **Innovation**                   | Pays by what the code calls, not what it lists. Favours whoever is unsupported. Names nobody without consent. Coding agents can credit what they install, with a person approving      | [`src/lib/domain/stage-name.ts`](src/lib/domain/stage-name.ts)                                                                     |
 | **Presentation**                 | The demo ends on names lighting up as PayPal confirms each payment                                                                                                                     | [`src/components/CreditsRoll.tsx`](src/components/CreditsRoll.tsx)                                                                 |
 
-157 tests. The domain logic — everything that decides money — has full statement and branch coverage.
+183 tests. The domain logic — everything that decides money — has full statement and branch coverage.
 
 ## Isn't this thanks.dev, or GitHub Sponsors?
 

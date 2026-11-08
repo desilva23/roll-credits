@@ -53,6 +53,22 @@ browser                         server                          PayPal
 The browser sends an order id and a repository name. It never sends an amount. The server asks PayPal what was
 actually captured and rebuilds the plan from that figure, so a tampered request cannot change what anyone is paid.
 
+## A payment started by a coding agent
+
+```
+coding agent ── who_to_credit ──────────────> /api/mcp ── reads the repo, returns the plan
+coding agent ── credit_maintainers($10) ────> /api/mcp ── opens a PayPal order with the
+                                                          repository sealed in custom_id
+                                                          and returns its approval link
+person ─────── approves in PayPal ──────────> PayPal ──── returns to /?funded&token=ORDER
+browser ─────── capture, then payouts ──────> server ──── reads amount and repository from
+                                                          PayPal, then pays
+```
+
+The repository travels inside the PayPal order, not through the browser or the agent, so nothing either sends after
+approval can redirect the money. The MCP server is stateless JSON over Streamable HTTP: no sessions and no
+server-initiated stream, which is all two tools need, and it lets any serverless instance answer any message.
+
 ## Why the agent cannot move money
 
 [`ai/contract.ts`](../src/lib/ai/contract.ts) defines what a judgement may contain and how far it may reach:

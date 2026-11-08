@@ -1,6 +1,6 @@
 # Testing
 
-157 tests. The domain layer — everything that decides money — has **100% statement, branch and function coverage**,
+183 tests. The domain layer — everything that decides money — has **100% statement, branch and function coverage**,
 enforced as a build threshold rather than reported as a figure. Nothing above that layer is covered by unit tests;
 the PayPal path was proven against the live sandbox instead, which is noted honestly below.
 
@@ -9,17 +9,19 @@ npm run check          # formatting, linting, types, tests
 npm run test:coverage   # coverage, which fails under 100% on the domain
 ```
 
-| Area                                                             | Tests | What it pins down                                   |
-| ---------------------------------------------------------------- | ----- | --------------------------------------------------- |
-| [`split.test.ts`](../src/lib/domain/split.test.ts)               | 21    | The money rules. Includes 2,000 randomised splits   |
-| [`imports.test.ts`](../src/lib/domain/imports.test.ts)           | 33    | Which import forms count, and what is test code     |
-| [`people.test.ts`](../src/lib/domain/people.test.ts)             | 22    | Bot detection, shares, and that logins never leak   |
-| [`weight.test.ts`](../src/lib/domain/weight.test.ts)             | 20    | Scoring, and the lift for a lone maintainer         |
-| [`dependencies.test.ts`](../src/lib/domain/dependencies.test.ts) | 10    | Reading a `package.json` that may be malformed      |
-| [`repo-ref.test.ts`](../src/lib/domain/repo-ref.test.ts)         | 19    | The repository forms people actually paste          |
-| [`stage-name.test.ts`](../src/lib/domain/stage-name.test.ts)     | 8     | Stable names that do not reveal the login           |
-| [`contract.test.ts`](../src/lib/ai/contract.test.ts)             | 11    | That a hostile model reply cannot move a weight far |
-| [`budget.test.ts`](../src/lib/domain/budget.test.ts)             | 13    | Amount formatting and range checks                  |
+| Area                                                             | Tests | What it pins down                                            |
+| ---------------------------------------------------------------- | ----- | ------------------------------------------------------------ |
+| [`split.test.ts`](../src/lib/domain/split.test.ts)               | 22    | The money rules. Includes 2,000 randomised splits            |
+| [`compare.test.ts`](../src/lib/domain/compare.test.ts)           | 13    | The dependency-list comparison, measured rather than claimed |
+| [`apportion.test.ts`](../src/lib/domain/apportion.test.ts)       | 12    | Splitting cents so the parts always sum to the whole         |
+| [`imports.test.ts`](../src/lib/domain/imports.test.ts)           | 33    | Which import forms count, and what is test code              |
+| [`people.test.ts`](../src/lib/domain/people.test.ts)             | 22    | Bot detection, shares, and that logins never leak            |
+| [`weight.test.ts`](../src/lib/domain/weight.test.ts)             | 20    | Scoring, and the lift for a lone maintainer                  |
+| [`dependencies.test.ts`](../src/lib/domain/dependencies.test.ts) | 10    | Reading a `package.json` that may be malformed               |
+| [`repo-ref.test.ts`](../src/lib/domain/repo-ref.test.ts)         | 19    | The repository forms people actually paste                   |
+| [`stage-name.test.ts`](../src/lib/domain/stage-name.test.ts)     | 8     | Stable names that do not reveal the login                    |
+| [`contract.test.ts`](../src/lib/ai/contract.test.ts)             | 11    | That a hostile model reply cannot move a weight far          |
+| [`budget.test.ts`](../src/lib/domain/budget.test.ts)             | 13    | Amount formatting and range checks                           |
 
 ## Randomised testing of the split
 
