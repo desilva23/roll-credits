@@ -39,6 +39,9 @@ Roll Credits reads what the code actually does instead.
 7. **Pay them.** A PayPal order is captured, then a Payouts batch goes out and the credits roll, each name brightening
    as PayPal reports `SUCCESS`.
 
+The same reading has two views. **Credits** makes the argument. **Ledger**, built with AG Grid, is the table behind
+it: sort by what was paid, by who is carrying a project alone, or by who already has funding.
+
 ## What is real, and what is not
 
 |              |                                                                                                                     |
@@ -59,11 +62,12 @@ maintainer was contacted, named or paid.
 
 ## Built with
 
-|            |                                                                                                                               |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| **PayPal** | JS SDK v6 (`createPayPalOneTimePaymentSession`), Orders v2, Payouts, webhooks with signature verification, Transaction Search |
-| **AI**     | Groq — `openai/gpt-oss-120b`, with strict JSON-schema output                                                                  |
-| **Stack**  | Next.js App Router, TypeScript in strict mode, Zod, Vitest, deployed on Vercel                                                |
+|             |                                                                                                                                                                                |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **PayPal**  | JS SDK v6 (`createPayPalOneTimePaymentSession`), Orders v2, Payouts, webhooks with signature verification, Transaction Search                                                  |
+| **AI**      | Groq — `openai/gpt-oss-120b`, with strict JSON-schema output                                                                                                                   |
+| **AG Grid** | AG Grid Community (MIT) for the ledger view, themed with the Theming API so it wears the page's own colours — [`src/components/LedgerGrid.tsx`](src/components/LedgerGrid.tsx) |
+| **Stack**   | Next.js App Router, TypeScript in strict mode, Zod, Vitest, deployed on Vercel                                                                                                 |
 
 ## Where the money decisions live
 
@@ -108,13 +112,13 @@ npm run check   # formatting, linting, types and tests
 
 ## Evaluation
 
-| Criterion                        | How it is addressed                                                                                                                        | Where to look                                                                                                                      |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| **Technological implementation** | Six PayPal surfaces working together, an agent reading real code under a clamped contract, and money rules held by tests                   | [`src/lib/server/`](src/lib/server/), [`src/lib/ai/`](src/lib/ai/), [`src/lib/domain/split.test.ts`](src/lib/domain/split.test.ts) |
-| **Design**                       | A complete path from a pasted URL to money arriving. Two deliberate worlds: a monospaced cutting room, and cinema                          | [`src/app/globals.css`](src/app/globals.css), [`src/components/`](src/components/)                                                 |
-| **Potential impact**             | Measured on a real repository, not asserted. The naive split's largest payee was the test runner; this one's is a maintainer working alone | [`src/lib/domain/weight.ts`](src/lib/domain/weight.ts)                                                                             |
-| **Innovation**                   | Pays by what the code calls, not what it lists. Favours whoever is unsupported. Names nobody without consent                               | [`src/lib/domain/stage-name.ts`](src/lib/domain/stage-name.ts)                                                                     |
-| **Presentation**                 | The demo ends on names lighting up as PayPal confirms each payment                                                                         | [`src/components/CreditsRoll.tsx`](src/components/CreditsRoll.tsx)                                                                 |
+| Criterion                        | How it is addressed                                                                                                                                                                  | Where to look                                                                                                                      |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Technological implementation** | Six PayPal surfaces working together, an agent reading real code under a clamped contract, and money rules held by tests                                                             | [`src/lib/server/`](src/lib/server/), [`src/lib/ai/`](src/lib/ai/), [`src/lib/domain/split.test.ts`](src/lib/domain/split.test.ts) |
+| **Design**                       | A complete path from a pasted URL to money arriving. Two deliberate worlds: a monospaced cutting room, and cinema. The AG Grid ledger is themed to match, not left as a default grid | [`src/app/globals.css`](src/app/globals.css), [`src/components/LedgerGrid.tsx`](src/components/LedgerGrid.tsx)                     |
+| **Potential impact**             | Measured on a real repository, not asserted. The naive split's largest payee was the test runner; this one's is a maintainer working alone                                           | [`src/lib/domain/weight.ts`](src/lib/domain/weight.ts)                                                                             |
+| **Innovation**                   | Pays by what the code calls, not what it lists. Favours whoever is unsupported. Names nobody without consent                                                                         | [`src/lib/domain/stage-name.ts`](src/lib/domain/stage-name.ts)                                                                     |
+| **Presentation**                 | The demo ends on names lighting up as PayPal confirms each payment                                                                                                                   | [`src/components/CreditsRoll.tsx`](src/components/CreditsRoll.tsx)                                                                 |
 
 157 tests. The domain logic — everything that decides money — has full statement and branch coverage.
 
