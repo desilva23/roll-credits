@@ -1,4 +1,4 @@
-import { stageName } from "./stage-name";
+import { keyed, stageName } from "./stage-name";
 
 /** A contributor as GitHub reports them. Never leaves the server in this shape. */
 export interface RawContributor {
@@ -49,15 +49,9 @@ export function isBot(login: string): boolean {
   return BOT_NAMES.has(key) || BOT_SUFFIX.test(key);
 }
 
-/** A one-way id, so a profile can be looked up from a login without storing one. */
-export function maintainerId(login: string): string {
-  const key = login.trim().toLowerCase();
-  let h = 0x811c9dc5;
-  for (let i = 0; i < key.length; i += 1) {
-    h ^= key.charCodeAt(i);
-    h = Math.imul(h, 0x01000193) >>> 0;
-  }
-  return `m_${h.toString(36)}${key.length.toString(36)}`;
+/** A keyed id, so a person can be recognised across packages without the login leaving the server. */
+export function maintainerId(login: string, secret: string): string {
+  return `m_${keyed(secret, "maintainer-id", login).subarray(0, 8).toString("hex")}`;
 }
 
 /**
@@ -66,7 +60,7 @@ export function maintainerId(login: string): string {
  * bus-factor signal too, because one person at 0.9 means the project has one
  * person.
  */
-export function toMaintainers(contributors: readonly RawContributor[], keep = 5): Maintainer[] {
+export function toMaintainers(contributors: readonly RawContributor[], secret: string, keep = 5): Maintainer[] {
   const people = contributors
     .filter((c) => c.login.trim() !== "" && !isBot(c.login) && c.contributions > 0)
     .sort((a, b) => b.contributions - a.contributions)
@@ -76,8 +70,8 @@ export function toMaintainers(contributors: readonly RawContributor[], keep = 5)
   if (total === 0) return [];
 
   return people.map((c) => ({
-    id: maintainerId(c.login),
-    name: stageName(c.login),
+    id: maintainerId(c.login, secret),
+    name: stageName(c.login, secret),
     commits: c.contributions,
     share: c.contributions / total,
   }));

@@ -1,4 +1,5 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { z } from "@/lib/zod";
 
 /**
@@ -23,4 +24,19 @@ export function env(): z.infer<typeof schema> {
     PAYPAL_WEBHOOK_ID: process.env.PAYPAL_WEBHOOK_ID,
   });
   return cached;
+}
+
+/**
+ * The key for stage names and maintainer ids.
+ *
+ * STAGE_NAME_SECRET when it is set. Otherwise a key derived from the PayPal
+ * client secret under its own label: secret already, already configured
+ * wherever the app runs, and identical locally and in production, so a name
+ * means the same person in both. The label keeps the derived key unrelated to
+ * anything PayPal sees.
+ */
+export function stageSecret(): string {
+  const own = process.env.STAGE_NAME_SECRET;
+  if (own !== undefined && own !== "") return own;
+  return createHash("sha256").update(`roll-credits stage names:${env().PAYPAL_CLIENT_SECRET}`).digest("hex");
 }

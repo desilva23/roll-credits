@@ -1,6 +1,7 @@
 import "server-only";
 import { type Maintainer, toMaintainers } from "@/lib/domain/people";
 import { repoSlug } from "@/lib/domain/repo-ref";
+import { stageSecret } from "./env";
 import { contributors, fundingLinks } from "./github";
 import { packageFacts } from "./npm";
 
@@ -42,7 +43,7 @@ async function resolveOne(pkg: string): Promise<PackagePeople> {
 
   // `HEAD` lets the raw host pick the default branch, saving an API call per package.
   const [people, declared] = await Promise.all([contributors(facts.repo), fundingLinks(facts.repo, "HEAD")]);
-  const maintainers = toMaintainers(people);
+  const maintainers = toMaintainers(people, stageSecret());
   const funding = [...new Set([...facts.funding, ...declared])];
 
   return {

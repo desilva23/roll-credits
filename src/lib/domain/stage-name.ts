@@ -1,3 +1,5 @@
+import { createHmac } from "node:crypto";
+
 /**
  * Maintainers appear under a generated name until they claim their profile.
  *
@@ -158,37 +160,34 @@ function pick(list: readonly string[], at: number): string {
 }
 
 /**
- * FNV-1a with an avalanche step. FNV alone is tiny and stable, but its low bits
- * stay correlated for inputs that share a suffix, and taking a name with
- * `% 64` reads only those bits: without the final mixing, 400 similar logins
- * collided 20 times instead of the expected once.
+ * A keyed hash of a login, for one purpose.
+ *
+ * Keyed, because an unkeyed hash can be run in reverse in practice: take a
+ * project's public contributor list, hash every login, and see which one gives
+ * the name on screen. With HMAC-SHA256 and a secret that never leaves the
+ * server, nobody can compute what a login maps to, so a name cannot be matched
+ * back to an account. The purpose label keeps names and ids independent.
+ *
+ * What it cannot hide is what is already public: the one person who wrote
+ * nearly all of a famous package can be looked up. Roll Credits does not name
+ * them; it does not pretend that makes them unknowable.
  */
-function hash(input: string): number {
-  let h = 0x811c9dc5;
-  for (let i = 0; i < input.length; i += 1) {
-    h ^= input.charCodeAt(i);
-    h = Math.imul(h, 0x01000193) >>> 0;
-  }
-  h ^= h >>> 16;
-  h = Math.imul(h, 0x7feb352d) >>> 0;
-  h ^= h >>> 15;
-  h = Math.imul(h, 0x846ca68b) >>> 0;
-  h ^= h >>> 16;
-  return h >>> 0;
+export function keyed(secret: string, purpose: string, login: string): Buffer {
+  if (secret === "") throw new RangeError("a secret is needed");
+  return createHmac("sha256", secret).update(`${purpose}:${login.trim().toLowerCase()}`).digest();
 }
 
 /**
- * The same login always yields the same name, so a person keeps one identity
- * across runs and across the credits roll. The mapping is one-way in practice:
- * the name carries no information that leads back to the account.
+ * The same login always yields the same name under the same secret, so a
+ * person keeps one identity across runs and across the credits roll.
  */
-export function stageName(login: string): string {
-  const key = login.trim().toLowerCase();
-  if (key === "") throw new RangeError("a login is needed");
+export function stageName(login: string, secret: string): string {
+  if (login.trim() === "") throw new RangeError("a login is needed");
+  const digest = keyed(secret, "stage-name", login);
 
-  // Three independent hashes, so first name, surname and initial vary freely.
-  const first = pick(FIRST, hash(`first:${key}`));
-  const last = pick(LAST, hash(`last:${key}`));
-  const initial = pick(INITIAL, hash(`middle:${key}`));
+  // Separate slices of one digest, so first name, initial and surname vary freely.
+  const first = pick(FIRST, digest.readUInt32BE(0));
+  const initial = pick(INITIAL, digest.readUInt32BE(4));
+  const last = pick(LAST, digest.readUInt32BE(8));
   return `${first} ${initial}. ${last}`;
 }
