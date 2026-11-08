@@ -45,15 +45,24 @@ export async function packageFacts(name: string): Promise<PackageFacts> {
 
   const doc = (await res.json()) as RegistryDoc;
   const rawRepo = typeof doc.repository === "string" ? doc.repository : doc.repository?.url;
+  return { repo: githubRepo(rawRepo), funding: fundingUrls(doc.funding), description: doc.description ?? null };
+}
 
-  let repo: RepoRef | null = null;
-  if (rawRepo?.includes("github.com")) {
-    try {
-      repo = parseRepoRef(rawRepo);
-    } catch {
-      repo = null;
-    }
+/** npm's shorthand for a GitHub repository: `owner/name`, or `github:owner/name`. */
+const SHORTHAND = /^(?:github:)?[\w.-]+\/[\w.-]+$/;
+
+/**
+ * The GitHub repository a package points at, or null for anywhere else.
+ * Besides full URLs, npm accepts `owner/name` as shorthand for GitHub; a
+ * package published that way would otherwise look as if nobody maintains it.
+ */
+function githubRepo(raw: string | undefined): RepoRef | null {
+  if (raw === undefined) return null;
+  const candidate = raw.includes("github.com") ? raw : SHORTHAND.test(raw) ? raw.replace(/^github:/, "") : null;
+  if (candidate === null) return null;
+  try {
+    return parseRepoRef(candidate);
+  } catch {
+    return null;
   }
-
-  return { repo, funding: fundingUrls(doc.funding), description: doc.description ?? null };
 }

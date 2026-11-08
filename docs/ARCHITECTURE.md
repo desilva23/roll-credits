@@ -76,7 +76,10 @@ server-initiated stream, which is all two tools need, and it lets any serverless
 - The reply is parsed with Zod. Anything malformed is discarded entirely.
 - `importance` is clamped to 0–1, then mapped to a multiplier between 0.5 and 2.
 - Judgements for packages the agent was not asked about are dropped.
-- Any failure — no key, a timeout, a rate limit, nonsense — returns nothing, and the measured weighting stands.
+- If the larger model is at its rate limit, the smaller one is asked. Groq budgets tokens per model, so the second
+  model has its own allowance rather than sharing the first one's.
+- Any other failure — no key, a timeout, both models busy, nonsense — returns nothing, and the measured weighting
+  stands. The page says which of these happened, rather than presenting measurement alone as the agent's view.
 
 That last point matters for judging as well as safety: **the whole flow runs with no AI key.**
 
@@ -99,8 +102,21 @@ says the reporting has not caught up rather than reporting a disagreement.
 GitHub and npm reads are cached for an hour: public data that barely changes, and the difference between a
 fourteen-second wait and a three-second one. Every PayPal call sets `no-store`.
 
+The agent's judgements are cached for a week, keyed on the models, the prompt and the exact evidence the agent was
+shown. That serves two ends. The same code is judged the same way on a second read, so the figures in a demo are the
+figures a visitor sees. And one reading costs three to four thousand tokens of an eight-thousand-a-minute budget,
+so a cached reading is one that cannot hit the limit. Only a real judgement is kept: a busy or failed answer is not
+remembered, so the next read asks again.
+
 ## Naming
 
-Maintainers appear under a generated film-credit name derived from their login, which never leaves the server. See
-[`domain/stage-name.ts`](../src/lib/domain/stage-name.ts) for why, and [TESTING.md](TESTING.md) for the hash problem
-this turned up.
+Maintainers appear under a generated film-credit name. The login never leaves the server; the name is taken from
+an HMAC-SHA256 of it, under a key that never leaves the server either: `STAGE_NAME_SECRET` when it is set, otherwise
+a key derived from the PayPal client secret, so every deployment with the same credentials names a person the same
+way. The ids that tie a person's payouts together are made the same way under a different purpose label, so a name
+and an id cannot be worked from each other.
+
+The key is the point. An unkeyed hash can be reversed in practice by hashing a project's public contributor list
+and seeing which login gives the name on screen. What no generated name can hide is a public fact, such as who
+wrote nearly all of a well-known package. See [`domain/stage-name.ts`](../src/lib/domain/stage-name.ts) for why
+names are generated at all, and [TESTING.md](TESTING.md) for the collision problem the first hash turned up.

@@ -38,7 +38,9 @@ Roll Credits reads what the code actually does instead.
    is the whole argument: reach the people nobody else is paying. On the example repo, before the agent adjusts
    anything, this step alone moves one-person projects from 16% to 46% of the budget.
 5. **Ask the agent.** An LLM reads the real import sites and argues how load-bearing each package is _in this
-   codebase_, not by reputation. It can scale a weight between a half and double, and can set no amount at all.
+   codebase_, not by reputation. It can scale a weight between a half and double, and can set no amount at all. If
+   the larger model is at its rate limit, a smaller one answers; if neither can, measurement alone decides and the
+   screen says so. A judgement is remembered for a week, so the same code reads the same way twice.
 6. **Split it.** Integer cents, largest remainder, always summing to exactly the amount captured. One person is paid
    once however many packages they maintain.
 7. **Pay them.** A PayPal order is captured, then a Payouts batch goes out and the credits roll, each name brightening
@@ -75,7 +77,7 @@ official MCP client SDK. See [`src/app/api/mcp/route.ts`](src/app/api/mcp/route.
 | ------------ | ------------------------------------------------------------------------------------------------------------------- |
 | **Real**     | Every PayPal call. Orders, capture, Payouts, signature-verified webhooks — all against the PayPal **sandbox**       |
 | **Real**     | The code reading. Live GitHub and npm data, no fixtures                                                             |
-| **Real**     | The AI judgements. Groq, at request time                                                                            |
+| **Real**     | The AI judgements. Groq, made when a codebase is first read and remembered for a week                               |
 | **Not real** | The money. Sandbox only. The app refuses to talk to live PayPal — the base URL is hard-coded                        |
 | **Not real** | The names. Every maintainer appears under a generated film-credit name                                              |
 | **Not real** | The recipients. One sandbox test address can receive; all others resolve to `example.com` and come back `UNCLAIMED` |
@@ -84,15 +86,20 @@ official MCP client SDK. See [`src/app/api/mcp/route.ts`](src/app/api/mcp/route.
 
 The hackathon rules make an entrant warrant that nothing published breaches anyone's privacy or publicity rights.
 Publishing real, identifiable maintainers alongside an AI's opinion of how they are funded sits squarely inside that.
-So every contributor is shown under a name derived from their account, which never leaves the server. No real
-maintainer was contacted, named or paid.
+So every contributor is shown under a film-credit name made from their GitHub login with a keyed hash, HMAC-SHA256.
+The login and the key both stay on the server. A plain hash would not be enough: anyone with a project's public
+contributor list could hash every login and match the names back. Without the key, they cannot.
+
+What a generated name cannot hide is what is public already. The one person who wrote nearly all of a well-known
+package can be looked up from the package. Roll Credits does not name them, and does not pretend that makes them
+unknowable. No real maintainer was contacted, named or paid.
 
 ## Built with
 
 |             |                                                                                                                                                                                |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **PayPal**  | JS SDK v6 (`createPayPalOneTimePaymentSession`), Orders v2, Payouts, webhooks with signature verification                                                                      |
-| **AI**      | Groq — `openai/gpt-oss-120b`, with strict JSON-schema output                                                                                                                   |
+| **AI**      | Groq — `openai/gpt-oss-120b`, falling back to `openai/gpt-oss-20b` when the larger is at its rate limit, with strict JSON-schema output. Judgements are cached for a week      |
 | **AG Grid** | AG Grid Community (MIT) for the ledger view, themed with the Theming API so it wears the page's own colours — [`src/components/LedgerGrid.tsx`](src/components/LedgerGrid.tsx) |
 | **MCP**     | A Model Context Protocol server, so coding agents can credit the people a project depends on — [`src/app/api/mcp/route.ts`](src/app/api/mcp/route.ts)                          |
 | **Stack**   | Next.js App Router, TypeScript in strict mode, Zod, Vitest, deployed on Vercel                                                                                                 |
@@ -150,7 +157,8 @@ npm run check   # formatting, linting, types and tests
 | **Innovation**                   | Pays by what the code calls, not what it lists. Favours whoever is unsupported. Names nobody without consent. Coding agents can credit what they install, with a person approving      | [`src/lib/domain/stage-name.ts`](src/lib/domain/stage-name.ts)                                                                     |
 | **Presentation**                 | The demo ends on names lighting up as PayPal confirms each payment                                                                                                                     | [`src/components/CreditsRoll.tsx`](src/components/CreditsRoll.tsx)                                                                 |
 
-183 tests. The domain logic — everything that decides money — has full statement and branch coverage.
+345 tests. The domain logic — everything that decides money — has full statement and branch coverage, enforced by
+the build. The server layer that talks to PayPal, GitHub, npm and Groq is 92% covered.
 
 ## Isn't this thanks.dev, or GitHub Sponsors?
 
@@ -161,7 +169,8 @@ than a dependency list, separates volunteers from staffed teams, and attaches ev
 ## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md) — the layers, the read and payment paths, and why the agent cannot move money
-- [Testing](docs/TESTING.md) — what is covered, what is not, and the three bugs the tests caught
+- [Testing](docs/TESTING.md) — what is covered, what is not, the bugs the tests caught, and the one only a real
+  payout could
 
 ## Licence
 
