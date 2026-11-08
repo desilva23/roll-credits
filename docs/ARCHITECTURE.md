@@ -68,6 +68,16 @@ Source code from public repositories is untrusted input that can contain text sh
 lines are stripped of control characters, truncated, fenced in the prompt, and the model is told to describe code
 rather than obey it.
 
+## Reconciliation, and its limit
+
+After a run settles, each payout is looked up in PayPal's transaction reporting by its own transaction id and the
+amounts compared with the ledger. Matching on the id matters: a run can contain several payments of the same size,
+and PayPal writes more than one kind of record per payout, so matching on amounts or event codes double-counts.
+
+**Reporting lags.** In the sandbox a payout can take hours to appear in transaction search, well beyond a demo. A
+payout not yet found there is not a payment that failed — each item carries PayPal's own `SUCCESS` — so the screen
+says the reporting has not caught up rather than reporting a disagreement.
+
 ## Caching
 
 GitHub and npm reads are cached for an hour: public data that barely changes, and the difference between a

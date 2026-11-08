@@ -64,7 +64,15 @@ export function CreditsRoll({ run, onClose }: { run: PayoutRun; onClose: () => v
               <br />
               {check.agrees
                 ? `PayPal's own records agree: ${money(check.foundCents)} across ${check.foundCount} payouts.`
-                : `PayPal's records show ${check.foundCount} of ${check.expectedCount} so far.`}
+                : // Each payment above is PayPal's own SUCCESS. Transaction
+                  // reporting is a separate system that lags by hours in the
+                  // sandbox, so "not found yet" is not a disagreement and must
+                  // not be written as though it were.
+                  `Checked against PayPal's transaction reporting, which updates separately and has ${
+                    check.foundCount > 0
+                      ? `so far recorded ${check.foundCount} of ${check.expectedCount}`
+                      : "not caught up yet"
+                  }.`}
             </>
           )}
           <br />

@@ -55,8 +55,10 @@ async function recordedCents(transactionId: string, window: string): Promise<num
  *
  * The point is that the app does not simply believe its own arithmetic: every
  * amount here comes back from PayPal, not from anything this process
- * remembers. Sandbox reporting lags a payout by a minute or two, so finding
- * fewer than expected is reported as still settling, not as a disagreement.
+ * remembers. Transaction reporting is a separate system from the payout
+ * itself and can lag a sandbox payment by hours, so finding fewer than
+ * expected means the report has not caught up — not that a payment is
+ * missing. Each payment's own status is PayPal's word on whether it landed.
  */
 export async function reconcile(items: readonly PayoutItem[]): Promise<Reconciliation> {
   const sent = items.filter((item) => item.status === "SUCCESS" && item.transactionId !== null);
@@ -90,8 +92,6 @@ export async function reconcile(items: readonly PayoutItem[]): Promise<Reconcili
     foundCents,
     foundCount: found.length,
     agrees,
-    note: agrees
-      ? null
-      : "PayPal's records are still catching up; sandbox reporting lags a payout by a minute or two.",
+    note: agrees ? null : "PayPal's transaction reporting updates separately and can lag a sandbox payout by hours.",
   };
 }
