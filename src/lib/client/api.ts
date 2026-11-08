@@ -52,10 +52,21 @@ export interface PayoutItem {
   status: string;
 }
 
+export interface Reconciliation {
+  expectedCents: number;
+  foundCents: number;
+  foundCount: number;
+  expectedCount: number;
+  agrees: boolean;
+  note: string | null;
+}
+
 export interface PayoutRun {
   batchId: string;
   batchStatus: string;
   items: PayoutItem[];
+  /** Null until every payout has settled. */
+  reconciliation?: Reconciliation | null;
 }
 
 async function post<T>(path: string, body: unknown): Promise<T> {

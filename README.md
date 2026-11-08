@@ -129,6 +129,11 @@ Those settle _how_ money moves once you already know who to pay. Roll Credits an
 codebase, which humans does it actually rest on, and which of them has nobody paying them? It reads call sites rather
 than a dependency list, separates volunteers from staffed teams, and attaches evidence to every amount.
 
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md) — the layers, the read and payment paths, and why the agent cannot move money
+- [Testing](docs/TESTING.md) — what is covered, what is not, and the three bugs the tests caught
+
 ## Licence
 
 [MIT](LICENSE)

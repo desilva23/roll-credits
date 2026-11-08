@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { parseRepoRef } from "@/lib/domain/repo-ref";
-import { readPayouts, sendPayouts } from "@/lib/server/payouts";
+import { type PayoutItem, readPayouts, sendPayouts } from "@/lib/server/payouts";
+import { reconcile } from "@/lib/server/reconcile";
 import { paypal } from "@/lib/server/paypal";
 import { planPayments } from "@/lib/server/pipeline";
 import { z } from "@/lib/zod";
@@ -16,7 +17,13 @@ const pollSchema = z.object({
   batchId: z.string().regex(BATCH_ID),
   items: z
     .array(
-      z.object({ id: z.string().max(64), name: z.string().max(120), cents: z.number(), status: z.string().max(32) }),
+      z.object({
+        id: z.string().max(64),
+        name: z.string().max(120),
+        cents: z.number(),
+        status: z.string().max(32),
+        transactionId: z.string().max(64).nullable().default(null),
+      }),
     )
     .max(40),
 });
@@ -45,17 +52,30 @@ async function capturedCents(orderId: string): Promise<number | null> {
   return Number.isSafeInteger(cents) ? cents : null;
 }
 
+/** Still moving, so there is nothing settled to reconcile yet. */
+const IN_FLIGHT = new Set(["PENDING", "PROCESSING"]);
+
+/**
+ * Reports where a payout run has got to, and once it has settled, checks the
+ * ledger against PayPal's own transaction records rather than trusting this
+ * app's arithmetic.
+ */
+async function pollRun(batchId: string, items: PayoutItem[]): Promise<NextResponse> {
+  try {
+    const run = await readPayouts(batchId, items);
+    const settled = run.items.every((item) => !IN_FLIGHT.has(item.status));
+    const worthChecking = settled && run.items.some((item) => item.status === "SUCCESS");
+    return NextResponse.json({ ...run, reconciliation: worthChecking ? await reconcile(run.items) : null });
+  } catch {
+    return NextResponse.json({ error: "could not read the payout" }, { status: 502 });
+  }
+}
+
 export async function POST(request: Request): Promise<NextResponse> {
   const raw: unknown = await request.json().catch(() => null);
 
   const poll = pollSchema.safeParse(raw);
-  if (poll.success) {
-    try {
-      return NextResponse.json(await readPayouts(poll.data.batchId, poll.data.items));
-    } catch {
-      return NextResponse.json({ error: "could not read the payout" }, { status: 502 });
-    }
-  }
+  if (poll.success) return pollRun(poll.data.batchId, poll.data.items);
 
   const start = startSchema.safeParse(raw);
   if (!start.success) return NextResponse.json({ error: "give an order and a repository" }, { status: 400 });

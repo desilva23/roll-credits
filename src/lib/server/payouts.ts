@@ -10,6 +10,8 @@ export interface PayoutItem {
   cents: number;
   /** PayPal's own word: SUCCESS, UNCLAIMED, PENDING, FAILED, BLOCKED, ONHOLD… */
   status: string;
+  /** PayPal's id for this payment, which reconciliation looks up. Null until it settles. */
+  transactionId: string | null;
 }
 
 export interface PayoutRun {
@@ -43,7 +45,9 @@ function batchIdFor(orderId: string): string {
 export async function sendPayouts(orderId: string, allocations: readonly Allocation[]): Promise<PayoutRun> {
   const items = allocations.map((a, index) => ({
     recipient_type: "EMAIL" as const,
-    amount: { value: toAmountValue(a.cents), currency_code: "USD" },
+    // Payouts spells this `currency`. Orders v2 spells the same thing
+    // `currency_code`, and sending that here fails with "may not be null".
+    amount: { value: toAmountValue(a.cents), currency: "USD" },
     // The first person has claimed their profile; the rest have not, so their
     // money waits for them and returns to the sender after 30 days.
     receiver: index === 0 ? CLAIMED_RECEIVER : `unclaimed-${a.id}@example.com`,
@@ -71,7 +75,13 @@ export async function sendPayouts(orderId: string, allocations: readonly Allocat
   return {
     batchId: created.batch_header.payout_batch_id,
     batchStatus: created.batch_header.batch_status,
-    items: allocations.map((a) => ({ id: a.id, name: a.name, cents: a.cents, status: "PENDING" })),
+    items: allocations.map((a) => ({
+      id: a.id,
+      name: a.name,
+      cents: a.cents,
+      status: "PENDING",
+      transactionId: null,
+    })),
   };
 }
 
@@ -82,17 +92,26 @@ export async function readPayouts(batchId: string, known: readonly PayoutItem[])
 
   const batch = body as {
     batch_header: { batch_status: string };
-    items?: { payout_item?: { sender_item_id?: string }; transaction_status?: string }[];
+    items?: { payout_item?: { sender_item_id?: string }; transaction_status?: string; transaction_id?: string }[];
   };
-  const states = new Map(
+  const live = new Map(
     (batch.items ?? []).flatMap((row) =>
-      row.payout_item?.sender_item_id === undefined ? [] : [[row.payout_item.sender_item_id, row.transaction_status]],
+      row.payout_item?.sender_item_id === undefined
+        ? []
+        : [[row.payout_item.sender_item_id, { status: row.transaction_status, transactionId: row.transaction_id }]],
     ),
   );
 
   return {
     batchId,
     batchStatus: batch.batch_header.batch_status,
-    items: known.map((item) => ({ ...item, status: states.get(item.id) ?? item.status })),
+    items: known.map((item) => {
+      const now = live.get(item.id);
+      return {
+        ...item,
+        status: now?.status ?? item.status,
+        transactionId: now?.transactionId ?? item.transactionId,
+      };
+    }),
   };
 }

@@ -39,6 +39,7 @@ export function CreditsRoll({ run, onClose }: { run: PayoutRun; onClose: () => v
   }, [state]);
 
   const paid = state.items.filter((item) => item.status === "SUCCESS").length;
+  const check = state.reconciliation ?? null;
 
   return (
     <div className="roll" role="dialog" aria-label="Credits">
@@ -58,6 +59,14 @@ export function CreditsRoll({ run, onClose }: { run: PayoutRun; onClose: () => v
         ))}
         <p className="roll__end">
           {paid} of {state.items.length} paid through PayPal.
+          {check === null ? null : (
+            <>
+              <br />
+              {check.agrees
+                ? `PayPal's own records agree: ${money(check.foundCents)} across ${check.foundCount} payouts.`
+                : `PayPal's records show ${check.foundCount} of ${check.expectedCount} so far.`}
+            </>
+          )}
           <br />
           Every payment was a real PayPal sandbox transaction.
           <br />
