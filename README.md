@@ -15,8 +15,9 @@ Built for the PayPal AI Hackathon 2026.
 ## The problem
 
 Every project runs on code written by people its authors have never met, and most of those people are paid nothing
-for it. The obvious fix — split money across your dependency list — sends it to the wrong places. Running that naive
-split on the author's own app, the single largest recipient was the **test runner**: zero lines of it ship to users.
+for it. The obvious fix — split money across your dependency list — sends it to the wrong places. On the author's own
+app, the package imported most often was the **test runner**: 64 imports, none of them in code that ships to users.
+Splitting by imports would have paid it most.
 
 Roll Credits reads what the code actually does instead.
 
@@ -30,8 +31,8 @@ Roll Credits reads what the code actually does instead.
 3. **Find the people.** Follows each package to its GitHub repository and reads who really commits there, dropping
    bots, and notes whether one person is carrying it and whether the project already takes funding.
 4. **Favour whoever is alone.** A package is lifted by up to 3× as its maintenance concentrates on one person. This
-   is the whole argument: reach the people nobody else is paying. On the example repo it moves one-person projects
-   from 16% to 46% of the budget.
+   is the whole argument: reach the people nobody else is paying. On the example repo, before the agent adjusts
+   anything, this step alone moves one-person projects from 16% to 46% of the budget.
 5. **Ask the agent.** An LLM reads the real import sites and argues how load-bearing each package is _in this
    codebase_, not by reputation. It can scale a weight between a half and double, and can set no amount at all.
 6. **Split it.** Integer cents, largest remainder, always summing to exactly the amount captured. One person is paid
@@ -64,7 +65,7 @@ maintainer was contacted, named or paid.
 
 |             |                                                                                                                                                                                |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **PayPal**  | JS SDK v6 (`createPayPalOneTimePaymentSession`), Orders v2, Payouts, webhooks with signature verification, Transaction Search                                                  |
+| **PayPal**  | JS SDK v6 (`createPayPalOneTimePaymentSession`), Orders v2, Payouts, webhooks with signature verification                                                                      |
 | **AI**      | Groq — `openai/gpt-oss-120b`, with strict JSON-schema output                                                                                                                   |
 | **AG Grid** | AG Grid Community (MIT) for the ledger view, themed with the Theming API so it wears the page's own colours — [`src/components/LedgerGrid.tsx`](src/components/LedgerGrid.tsx) |
 | **Stack**   | Next.js App Router, TypeScript in strict mode, Zod, Vitest, deployed on Vercel                                                                                                 |
@@ -100,8 +101,8 @@ npm run dev
 ```
 
 Create a **United States** sandbox business account and a sandbox personal account at
-[developer.paypal.com](https://developer.paypal.com/), make an app against the business account with **Payouts** and
-**Transaction Search** enabled, and copy its client ID and secret into `.env.local`.
+[developer.paypal.com](https://developer.paypal.com/), make an app against the business account with **Payouts**
+enabled, and copy its client ID and secret into `.env.local`.
 
 **It works without an AI key.** With `GROQ_API_KEY` unset, the agent is skipped and the measured weighting decides on
 its own — the whole flow still runs end to end.
@@ -112,13 +113,13 @@ npm run check   # formatting, linting, types and tests
 
 ## Evaluation
 
-| Criterion                        | How it is addressed                                                                                                                                                                  | Where to look                                                                                                                      |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| **Technological implementation** | Six PayPal surfaces working together, an agent reading real code under a clamped contract, and money rules held by tests                                                             | [`src/lib/server/`](src/lib/server/), [`src/lib/ai/`](src/lib/ai/), [`src/lib/domain/split.test.ts`](src/lib/domain/split.test.ts) |
-| **Design**                       | A complete path from a pasted URL to money arriving. Two deliberate worlds: a monospaced cutting room, and cinema. The AG Grid ledger is themed to match, not left as a default grid | [`src/app/globals.css`](src/app/globals.css), [`src/components/LedgerGrid.tsx`](src/components/LedgerGrid.tsx)                     |
-| **Potential impact**             | Measured on a real repository, not asserted. The naive split's largest payee was the test runner; this one's is a maintainer working alone                                           | [`src/lib/domain/weight.ts`](src/lib/domain/weight.ts)                                                                             |
-| **Innovation**                   | Pays by what the code calls, not what it lists. Favours whoever is unsupported. Names nobody without consent                                                                         | [`src/lib/domain/stage-name.ts`](src/lib/domain/stage-name.ts)                                                                     |
-| **Presentation**                 | The demo ends on names lighting up as PayPal confirms each payment                                                                                                                   | [`src/components/CreditsRoll.tsx`](src/components/CreditsRoll.tsx)                                                                 |
+| Criterion                        | How it is addressed                                                                                                                                                                    | Where to look                                                                                                                      |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Technological implementation** | Four PayPal surfaces working together — JS SDK v6, Orders, Payouts and signature-verified webhooks, an agent reading real code under a clamped contract, and money rules held by tests | [`src/lib/server/`](src/lib/server/), [`src/lib/ai/`](src/lib/ai/), [`src/lib/domain/split.test.ts`](src/lib/domain/split.test.ts) |
+| **Design**                       | A complete path from a pasted URL to money arriving. Two deliberate worlds: a monospaced cutting room, and cinema. The AG Grid ledger is themed to match, not left as a default grid   | [`src/app/globals.css`](src/app/globals.css), [`src/components/LedgerGrid.tsx`](src/components/LedgerGrid.tsx)                     |
+| **Potential impact**             | Measured on a real repository, not asserted. The naive split's largest payee was the test runner; this one's is a maintainer working alone                                             | [`src/lib/domain/weight.ts`](src/lib/domain/weight.ts)                                                                             |
+| **Innovation**                   | Pays by what the code calls, not what it lists. Favours whoever is unsupported. Names nobody without consent                                                                           | [`src/lib/domain/stage-name.ts`](src/lib/domain/stage-name.ts)                                                                     |
+| **Presentation**                 | The demo ends on names lighting up as PayPal confirms each payment                                                                                                                     | [`src/components/CreditsRoll.tsx`](src/components/CreditsRoll.tsx)                                                                 |
 
 157 tests. The domain logic — everything that decides money — has full statement and branch coverage.
 
