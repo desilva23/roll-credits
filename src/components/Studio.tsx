@@ -1,15 +1,13 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { CastList } from "@/components/CastList";
-import { CompareSummary } from "@/components/CompareSummary";
 import { CreditsRoll } from "@/components/CreditsRoll";
-import { FundButton } from "@/components/FundButton";
-import { LedgerGrid } from "@/components/LedgerGrid";
+import { PlanView } from "@/components/PlanView";
 import { ReadingSteps } from "@/components/ReadingSteps";
 import { RepoField } from "@/components/RepoField";
-import { type View, ViewTabs } from "@/components/ViewTabs";
-import { type PayoutRun, type Plan, money, readRepo, startPayouts } from "@/lib/client/api";
+import { setAddress, useDeepLink } from "@/components/useDeepLink";
+import { type PayoutRun, type Plan, readRepo, startPayouts } from "@/lib/client/api";
+import { replay, replayCaption } from "@/lib/client/replay";
 
 const BUDGET_CENTS = 25_00;
 
@@ -18,13 +16,35 @@ type Stage =
   | { at: "reading" }
   | { at: "plan"; plan: Plan }
   | { at: "paying"; plan: Plan }
-  | { at: "rolling"; run: PayoutRun };
+  | { at: "rolling"; run: PayoutRun; caption?: string };
+
+/**
+ * Once PayPal has captured the order, asks the server to pay everyone. The
+ * server re-checks the capture with PayPal itself before any money moves.
+ */
+function payOut(
+  orderId: string,
+  plan: Plan,
+  setStage: (stage: Stage) => void,
+  setProblem: (problem: string) => void,
+): void {
+  setStage({ at: "paying", plan });
+  void startPayouts(orderId, plan.repo).then(
+    (run) => {
+      setStage({ at: "rolling", run });
+    },
+    (error: unknown) => {
+      setProblem(error instanceof Error ? error.message : "The payout failed.");
+      setStage({ at: "plan", plan });
+    },
+  );
+}
 
 export function Studio({ clientId }: { clientId: string }): React.JSX.Element {
   const [stage, setStage] = useState<Stage>({ at: "idle" });
   const [problem, setProblem] = useState<string | null>(null);
-  const [view, setView] = useState<View>("credits");
   const [steps, setSteps] = useState<string[]>([]);
+  const [seed, setSeed] = useState("");
 
   const read = useCallback((which: string) => {
     if (which.trim() === "") return;
@@ -36,6 +56,7 @@ export function Studio({ clientId }: { clientId: string }): React.JSX.Element {
     }).then(
       (plan) => {
         setStage({ at: "plan", plan });
+        setAddress(`repo=${encodeURIComponent(plan.repo)}`);
       },
       (error: unknown) => {
         setProblem(error instanceof Error ? error.message : "The scan failed.");
@@ -44,20 +65,23 @@ export function Studio({ clientId }: { clientId: string }): React.JSX.Element {
     );
   }, []);
 
+  const openReplay = useCallback(() => {
+    setStage({ at: "rolling", run: replay.run, caption: replayCaption });
+    setAddress("replay");
+  }, []);
+
+  const arrive = useCallback(
+    (repo: string) => {
+      setSeed(repo);
+      read(repo);
+    },
+    [read],
+  );
+  useDeepLink(arrive, openReplay);
+
   const onCaptured = useCallback(
     (orderId: string) => {
-      if (stage.at !== "plan") return;
-      const { plan } = stage;
-      setStage({ at: "paying", plan });
-      void startPayouts(orderId, plan.repo).then(
-        (run) => {
-          setStage({ at: "rolling", run });
-        },
-        (error: unknown) => {
-          setProblem(error instanceof Error ? error.message : "The payout failed.");
-          setStage({ at: "plan", plan });
-        },
-      );
+      if (stage.at === "plan") payOut(orderId, stage.plan, setStage, setProblem);
     },
     [stage],
   );
@@ -66,8 +90,10 @@ export function Studio({ clientId }: { clientId: string }): React.JSX.Element {
     return (
       <CreditsRoll
         run={stage.run}
+        {...(stage.caption === undefined ? {} : { caption: stage.caption })}
         onClose={() => {
           setStage({ at: "idle" });
+          setAddress("");
         }}
       />
     );
@@ -78,29 +104,17 @@ export function Studio({ clientId }: { clientId: string }): React.JSX.Element {
 
   return (
     <>
-      <RepoField busy={busy} onRead={read} />
+      <RepoField key={seed} initial={seed} busy={busy} onRead={read} onReplay={openReplay} />
       {stage.at === "reading" ? <ReadingSteps steps={steps} /> : null}
       {problem === null ? null : <p className="notice">{problem}</p>}
       {plan === null ? null : (
-        <>
-          <CompareSummary plan={plan} />
-          <ViewTabs view={view} onChange={setView} />
-          {view === "credits" ? <CastList plan={plan} /> : <LedgerGrid plan={plan} />}
-
-          <section className="act">
-            <div className="act__head">
-              <h2 className="act__title">Pay them</h2>
-              <p className="act__meta">
-                {money(plan.totalCents)} to {plan.allocations.length} people
-              </p>
-            </div>
-            {stage.at === "paying" ? (
-              <p className="hint">Sending the payouts through PayPal…</p>
-            ) : (
-              <FundButton clientId={clientId} budgetCents={BUDGET_CENTS} onCaptured={onCaptured} />
-            )}
-          </section>
-        </>
+        <PlanView
+          plan={plan}
+          paying={stage.at === "paying"}
+          clientId={clientId}
+          budgetCents={BUDGET_CENTS}
+          onCaptured={onCaptured}
+        />
       )}
     </>
   );

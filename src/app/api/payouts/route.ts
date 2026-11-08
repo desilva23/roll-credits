@@ -65,7 +65,10 @@ async function pollRun(batchId: string, items: PayoutItem[]): Promise<NextRespon
     const run = await readPayouts(batchId, items);
     const settled = run.items.every((item) => !IN_FLIGHT.has(item.status));
     const worthChecking = settled && run.items.some((item) => item.status === "SUCCESS");
-    return NextResponse.json({ ...run, reconciliation: worthChecking ? await reconcile(run.items) : null });
+    return NextResponse.json({
+      ...run,
+      reconciliation: worthChecking ? await reconcile(run.items, run.createdAt) : null,
+    });
   } catch {
     return NextResponse.json({ error: "could not read the payout" }, { status: 502 });
   }

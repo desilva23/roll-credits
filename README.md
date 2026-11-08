@@ -5,8 +5,12 @@
 Roll Credits reads a codebase, works out which people it really depends on, and pays them through PayPal — ending on
 a film-credits roll where each name lights up as PayPal confirms the money arrived.
 
-**Live demo: https://roll-credits-desilva23s-projects.vercel.app** — no sign-in, no setup. Paste a public GitHub
-repository, or use the example link on the page.
+**Live demo: https://roll-credits-desilva23s-projects.vercel.app** — no sign-in, no setup.
+
+- **[Read an example repository](https://roll-credits-desilva23s-projects.vercel.app/?repo=desilva23/celebration-planner)**
+  — opens straight into a reading.
+- **[Watch a real run](https://roll-credits-desilva23s-projects.vercel.app/?replay)** — the credits roll for a real
+  sandbox payout, with every state read live from PayPal. No PayPal login needed.
 
 Built for the PayPal AI Hackathon 2026.
 

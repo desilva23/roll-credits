@@ -511,3 +511,11 @@ a {
     font-size: 1.05rem;
   }
 }
+
+.roll__caption {
+  max-width: 30rem;
+  margin: 0 auto 3rem;
+  color: var(--dim);
+  font-size: 0.8125rem;
+  line-height: 1.7;
+}

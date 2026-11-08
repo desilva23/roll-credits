@@ -99,6 +99,7 @@ export interface PayoutRun {
   items: PayoutItem[];
   /** Null until every payout has settled. */
   reconciliation?: Reconciliation | null;
+  createdAt?: string;
 }
 
 async function post<T>(path: string, body: unknown): Promise<T> {

@@ -15,8 +15,10 @@ export interface Reconciliation {
   note: string | null;
 }
 
-/** PayPal's reporting window is capped; a few days covers any run of this app. */
-const WINDOW_DAYS = 3;
+/** PayPal caps a search at 31 days, so the window opens a day before the run and spans thirty. */
+const DAY_MS = 24 * 60 * 60 * 1000;
+const BEFORE_DAYS = 1;
+const AFTER_DAYS = 29;
 
 /** Enough at once to be quick, few enough to stay polite. */
 const BATCH = 5;
@@ -60,7 +62,19 @@ async function recordedCents(transactionId: string, window: string): Promise<num
  * expected means the report has not caught up — not that a payment is
  * missing. Each payment's own status is PayPal's word on whether it landed.
  */
-export async function reconcile(items: readonly PayoutItem[]): Promise<Reconciliation> {
+/**
+ * A search window around the run itself rather than around today, so a run
+ * replayed during judging, weeks later, is still found.
+ */
+function windowAround(createdAt: string | undefined): string {
+  const anchor = createdAt === undefined ? Date.now() : Date.parse(createdAt);
+  const at = Number.isFinite(anchor) ? anchor : Date.now();
+  const start = new Date(at - BEFORE_DAYS * DAY_MS);
+  const end = new Date(Math.min(Date.now(), at + AFTER_DAYS * DAY_MS));
+  return `start_date=${iso(start)}&end_date=${iso(end)}&fields=transaction_info`;
+}
+
+export async function reconcile(items: readonly PayoutItem[], createdAt?: string): Promise<Reconciliation> {
   const sent = items.filter((item) => item.status === "SUCCESS" && item.transactionId !== null);
   const expectedCents = sent.reduce((sum, item) => sum + item.cents, 0);
   const expectedCount = sent.length;
@@ -69,9 +83,7 @@ export async function reconcile(items: readonly PayoutItem[]): Promise<Reconcili
     return { expectedCents, expectedCount, foundCents: 0, foundCount: 0, agrees: false, note: "Nothing to check." };
   }
 
-  const end = new Date();
-  const start = new Date(end.getTime() - WINDOW_DAYS * 24 * 60 * 60 * 1000);
-  const window = `start_date=${iso(start)}&end_date=${iso(end)}&fields=transaction_info`;
+  const window = windowAround(createdAt);
 
   const found: number[] = [];
   for (let i = 0; i < sent.length; i += BATCH) {

@@ -5,8 +5,19 @@ import { useState } from "react";
 const EXAMPLE = "desilva23/celebration-planner";
 
 /** Where the whole thing starts: one public repository, no sign-in. */
-export function RepoField({ busy, onRead }: { busy: boolean; onRead: (repo: string) => void }): React.JSX.Element {
-  const [repo, setRepo] = useState("");
+export function RepoField({
+  busy,
+  initial,
+  onRead,
+  onReplay,
+}: {
+  busy: boolean;
+  /** A repository the page was opened with, so the field shows what is being read. */
+  initial: string;
+  onRead: (repo: string) => void;
+  onReplay: () => void;
+}): React.JSX.Element {
+  const [repo, setRepo] = useState(initial);
 
   return (
     <>
@@ -48,6 +59,11 @@ export function RepoField({ busy, onRead }: { busy: boolean; onRead: (repo: stri
         >
           {EXAMPLE}
         </button>
+        , or{" "}
+        <button type="button" onClick={onReplay} disabled={busy}>
+          watch a real run
+        </button>
+        .
       </p>
     </>
   );

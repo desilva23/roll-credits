@@ -18,6 +18,8 @@ export interface PayoutRun {
   batchId: string;
   batchStatus: string;
   items: PayoutItem[];
+  /** When PayPal created the batch, so its records can be searched around that date. */
+  createdAt?: string;
 }
 
 /**
@@ -91,7 +93,7 @@ export async function readPayouts(batchId: string, known: readonly PayoutItem[])
   if (!ok) throw new Error("could not read the payout");
 
   const batch = body as {
-    batch_header: { batch_status: string };
+    batch_header: { batch_status: string; time_created?: string };
     items?: { payout_item?: { sender_item_id?: string }; transaction_status?: string; transaction_id?: string }[];
   };
   const live = new Map(
@@ -105,6 +107,7 @@ export async function readPayouts(batchId: string, known: readonly PayoutItem[])
   return {
     batchId,
     batchStatus: batch.batch_header.batch_status,
+    ...(batch.batch_header.time_created === undefined ? {} : { createdAt: batch.batch_header.time_created }),
     items: known.map((item) => {
       const now = live.get(item.id);
       return {

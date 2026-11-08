@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type PayoutRun, checkPayouts, money } from "@/lib/client/api";
 
 /** PayPal takes up to a minute to settle a payout, so the roll polls as it plays. */
@@ -14,14 +14,24 @@ function label(status: string): string {
   return status.toLowerCase();
 }
 
-export function CreditsRoll({ run, onClose }: { run: PayoutRun; onClose: () => void }): React.JSX.Element {
+export function CreditsRoll({
+  run,
+  onClose,
+  caption,
+}: {
+  run: PayoutRun;
+  onClose: () => void;
+  /** Shown above the roll, e.g. to say a run is a replay and when it was recorded. */
+  caption?: string;
+}): React.JSX.Element {
   const [state, setState] = useState(run);
+  const first = useRef(true);
 
   useEffect(() => {
     if (state.items.every((item) => SETTLED.has(item.status))) return;
 
     let live = true;
-    const timer = setInterval(() => {
+    const poll = (): void => {
       void checkPayouts(state).then(
         (next) => {
           if (live) setState(next);
@@ -30,10 +40,21 @@ export function CreditsRoll({ run, onClose }: { run: PayoutRun; onClose: () => v
           // A dropped poll is not worth interrupting the roll for; the next one retries.
         },
       );
-    }, POLL_MS);
+    };
+
+    // Ask PayPal straight away on opening, so a replay of a settled run shows
+    // its real states at once rather than pretending to send for four seconds.
+    const soon = first.current
+      ? setTimeout(() => {
+          first.current = false;
+          poll();
+        }, 300)
+      : undefined;
+    const timer = setInterval(poll, POLL_MS);
 
     return () => {
       live = false;
+      clearTimeout(soon);
       clearInterval(timer);
     };
   }, [state]);
@@ -47,6 +68,7 @@ export function CreditsRoll({ run, onClose }: { run: PayoutRun; onClose: () => v
         Close
       </button>
       <div className="roll__inner roll__inner--playing">
+        {caption === undefined ? null : <p className="roll__caption">{caption}</p>}
         <p className="roll__title">Roll Credits</p>
         {state.items.map((item) => (
           <div key={item.id} className="roll__card">
