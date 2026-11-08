@@ -403,3 +403,38 @@ a {
 .fund {
   margin-top: 1.5rem;
 }
+
+/* ---------- the two readings ---------- */
+
+.views {
+  display: flex;
+  gap: 0;
+  margin-top: clamp(3rem, 9vh, 5.5rem);
+  border-bottom: 1px solid var(--line);
+}
+
+.views__tab {
+  padding: 0.6rem 1.1rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  color: var(--dim);
+  font: inherit;
+  font-size: 0.8125rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.views__tab--on {
+  border-bottom-color: var(--light);
+  color: var(--paper);
+}
+
+.views + .act {
+  margin-top: 1.75rem;
+}
+
+.ledger {
+  margin-top: 1.75rem;
+}

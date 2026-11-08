@@ -4,7 +4,9 @@ import { useCallback, useState } from "react";
 import { CastList } from "@/components/CastList";
 import { CreditsRoll } from "@/components/CreditsRoll";
 import { FundButton } from "@/components/FundButton";
+import { LedgerGrid } from "@/components/LedgerGrid";
 import { RepoField } from "@/components/RepoField";
+import { type View, ViewTabs } from "@/components/ViewTabs";
 import { type PayoutRun, type Plan, money, readRepo, startPayouts } from "@/lib/client/api";
 
 const BUDGET_CENTS = 25_00;
@@ -19,6 +21,7 @@ type Stage =
 export function Studio({ clientId }: { clientId: string }): React.JSX.Element {
   const [stage, setStage] = useState<Stage>({ at: "idle" });
   const [problem, setProblem] = useState<string | null>(null);
+  const [view, setView] = useState<View>("credits");
 
   const read = useCallback((which: string) => {
     if (which.trim() === "") return;
@@ -73,7 +76,9 @@ export function Studio({ clientId }: { clientId: string }): React.JSX.Element {
       {problem === null ? null : <p className="notice">{problem}</p>}
       {plan === null ? null : (
         <>
-          <CastList plan={plan} />
+          <ViewTabs view={view} onChange={setView} />
+          {view === "credits" ? <CastList plan={plan} /> : <LedgerGrid plan={plan} />}
+
           <section className="act">
             <div className="act__head">
               <h2 className="act__title">Pay them</h2>
