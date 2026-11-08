@@ -1,8 +1,10 @@
 import "server-only";
+import { type AgentInput, judgePackages } from "@/lib/ai/attribute";
+import { factorFromImportance } from "@/lib/ai/contract";
+import { type ImportSite } from "@/lib/domain/imports";
 import { type Maintainer } from "@/lib/domain/people";
 import { type RepoRef } from "@/lib/domain/repo-ref";
 import { type Allocation, type WeightedPackage, splitBudget } from "@/lib/domain/split";
-import { type ImportSite } from "@/lib/domain/imports";
 import { adjustForMaintainers, topEvidence, weighPackages } from "@/lib/domain/weight";
 import { resolvePeople } from "./people";
 import { scanRepo } from "./scan";
@@ -11,7 +13,10 @@ import { scanRepo } from "./scan";
 export interface PlannedPackage {
   pkg: string;
   score: number;
+  /** Why it is weighted this way, in language a maintainer can check. */
   reason: string;
+  /** What the agent says the package does here, or null when it did not run. */
+  role: string | null;
   evidence: ImportSite[];
   repo: string | null;
   maintainers: Maintainer[];
@@ -23,12 +28,12 @@ export interface PaymentPlan {
   repo: string;
   budgetCents: number;
   filesRead: number;
+  /** True when the agent ran. False means the measured weighting alone decided. */
+  agentUsed: boolean;
   packages: PlannedPackage[];
   allocations: Allocation[];
   totalCents: number;
-  /** Earned something, but too little to be worth a payout. */
   belowMinimum: { name: string; cents: number }[];
-  /** Packages that matter but have nobody to pay, with the reason. */
   unpayable: { pkg: string; reason: string }[];
 }
 
@@ -39,36 +44,52 @@ const MAX_PACKAGES = 12;
  * Turns a repository and a budget into who gets paid what.
  *
  * Every step runs on the server: the browser never supplies a use count, a
- * weight or an amount. The weighting here is the deterministic one, which the
- * attribution agent will refine without being allowed to decide any amount.
+ * weight or an amount. The agent argues about importance within fixed bounds;
+ * `splitBudget` alone decides money, and it works unchanged when the agent
+ * does not run.
  */
 export async function planPayments(ref: RepoRef, budgetCents: number): Promise<PaymentPlan> {
   const scan = await scanRepo(ref);
 
-  const weights = new Map(weighPackages(scan.packages).map((w) => [w.pkg, w]));
-  const earning = scan.packages.filter((p) => (weights.get(p.name)?.score ?? 0) > 0).slice(0, MAX_PACKAGES);
+  const measured = new Map(weighPackages(scan.packages).map((w) => [w.pkg, w]));
+  const earning = scan.packages.filter((p) => (measured.get(p.name)?.score ?? 0) > 0).slice(0, MAX_PACKAGES);
 
   const people = new Map((await resolvePeople(earning.map((p) => p.name))).map((p) => [p.pkg, p]));
 
+  const agentInput: AgentInput[] = earning.map((p) => ({
+    pkg: p.name,
+    kind: p.kind,
+    productUses: p.productUses,
+    testUses: p.testUses,
+    description: people.get(p.name)?.description ?? null,
+    evidence: topEvidence(p.sites),
+  }));
+  const judged = new Map((await judgePackages(agentInput)).map((j) => [j.pkg, j]));
+
   const packages: PlannedPackage[] = earning.map((p) => {
-    const weight = weights.get(p.name) ?? { pkg: p.name, score: 0, reason: "" };
+    const base = measured.get(p.name) ?? { pkg: p.name, score: 0, reason: "" };
     const found = people.get(p.name) ?? {
       repo: null,
       maintainers: [],
       alreadyFunded: false,
       singleMaintainer: false,
     };
-    // The maintainer signal is applied here, once the people are known: a
-    // library one person holds up earns more per use than one a staffed team
-    // maintains, because the point is to reach whoever nobody else is paying.
+
+    // The maintainer signal first: a library one person holds up earns more per
+    // use than one a staffed team maintains. Then the agent, which may scale
+    // that between half and double but can set no amount itself.
     const adjusted = adjustForMaintainers(
-      weight,
+      base,
       found.maintainers.map((m) => m.share),
     );
+    const verdict = judged.get(p.name);
+    const factor = verdict === undefined ? 1 : factorFromImportance(verdict.importance);
+
     return {
       pkg: p.name,
-      score: adjusted.score,
-      reason: adjusted.reason,
+      score: adjusted.score * factor,
+      reason: verdict === undefined ? adjusted.reason : `${adjusted.reason} ${verdict.reason}`,
+      role: verdict?.role ?? null,
       evidence: topEvidence(p.sites),
       repo: found.repo,
       maintainers: found.maintainers,
@@ -99,7 +120,8 @@ export async function planPayments(ref: RepoRef, budgetCents: number): Promise<P
     repo: scan.repo,
     budgetCents,
     filesRead: scan.filesRead,
-    packages,
+    agentUsed: judged.size > 0,
+    packages: [...packages].sort((a, b) => b.score - a.score || a.pkg.localeCompare(b.pkg)),
     allocations: split.allocations,
     totalCents: split.totalCents,
     belowMinimum: split.belowMinimum,
