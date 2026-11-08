@@ -1,83 +1,405 @@
+/*
+ * Two worlds, one page. The working screens are a cutting room: warm dark,
+ * left-aligned, monospaced, full of file paths. The roll is cinema: true
+ * black, centred, a high-contrast serif. The whole product is the argument
+ * that those two worlds are about the same people.
+ */
+
 :root {
-  --bg: #07070a;
-  --fg: #f4f4f5;
-  --muted: #a1a1aa;
-  --accent: #ffd34d;
-  --line: #26262c;
+  --screen: #000000;
+  --stock: #15110d;
+  --raised: #1d1710;
+  --line: #342a20;
+  --paper: #ece5da;
+  --dim: #8d8275;
+  --light: #f0c070;
+
+  --measure: 68ch;
+  --gutter: clamp(1.25rem, 5vw, 3rem);
 }
 
 * {
   box-sizing: border-box;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--fg);
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    sans-serif;
+  background: var(--stock);
+  color: var(--paper);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.9375rem;
   line-height: 1.6;
+  font-feature-settings: "ss01";
 }
 
-.page {
-  max-width: 44rem;
-  margin: 0 auto;
-  padding: 4rem 1rem;
+::selection {
+  background: var(--light);
+  color: var(--screen);
 }
 
-.badge {
-  display: inline-block;
-  margin: 0 0 2rem;
-  padding: 0.25rem 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  color: var(--muted);
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+a {
+  color: inherit;
 }
 
-.title {
-  margin: 0 0 1rem;
-  font-size: clamp(2.5rem, 9vw, 4.5rem);
-  letter-spacing: -0.03em;
-  line-height: 1.05;
-}
-
-.tagline {
-  margin: 0 0 2.5rem;
-  color: var(--muted);
-  font-size: 1.125rem;
-}
-
-.fund__button {
-  padding: 0.85rem 1.75rem;
-  border: 0;
-  border-radius: 999px;
-  background: var(--accent);
-  color: #1a1a00;
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.fund__button:disabled {
-  opacity: 0.5;
-  cursor: progress;
-}
-
-.fund__button:focus-visible {
-  outline: 3px solid var(--fg);
+:focus-visible {
+  outline: 2px solid var(--light);
   outline-offset: 3px;
 }
 
-.fund__status,
-.warn {
-  min-height: 1.5rem;
-  margin: 1rem 0 0;
-  color: var(--muted);
+/* ---------- shell ---------- */
+
+.shell {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: clamp(2rem, 7vh, 5rem) var(--gutter) 6rem;
+}
+
+.slate {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--dim);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+}
+
+/* ---------- title ---------- */
+
+.title {
+  margin: clamp(2.5rem, 8vh, 5rem) 0 0;
+  font-family: var(--font-display), serif;
+  font-weight: 400;
+  font-size: clamp(3.25rem, 13vw, 7rem);
+  line-height: 0.92;
+  letter-spacing: -0.02em;
+}
+
+.lede {
+  max-width: 46ch;
+  margin: 1.5rem 0 0;
+  color: var(--dim);
+  font-size: 1rem;
+}
+
+.lede strong {
+  color: var(--paper);
+  font-weight: 400;
+}
+
+/* ---------- repo field ---------- */
+
+.field {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 2.5rem 0 0;
+}
+
+.field input {
+  flex: 1 1 22ch;
+  min-width: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--screen);
+  color: var(--paper);
+  font: inherit;
+}
+
+.field input::placeholder {
+  color: #5f574d;
+}
+
+.button {
+  padding: 0.85rem 1.5rem;
+  border: 1px solid var(--light);
+  border-radius: 2px;
+  background: var(--light);
+  color: var(--screen);
+  font: inherit;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.button--quiet {
+  border-color: var(--line);
+  background: transparent;
+  color: var(--paper);
+  font-weight: 400;
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: progress;
+}
+
+.hint {
+  margin: 0.9rem 0 0;
+  color: var(--dim);
+  font-size: 0.8125rem;
+}
+
+.hint button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--light);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.notice {
+  margin: 1.25rem 0 0;
+  padding: 0.75rem 1rem;
+  border-left: 2px solid var(--light);
+  background: var(--raised);
+  color: var(--paper);
+  font-size: 0.875rem;
+}
+
+/* ---------- the reading ---------- */
+
+.act {
+  margin-top: clamp(3rem, 9vh, 5.5rem);
+}
+
+.act__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.act__title {
+  margin: 0;
+  font-family: var(--font-display), serif;
+  font-size: 1.75rem;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.act__meta {
+  color: var(--dim);
+  font-size: 0.8125rem;
+}
+
+.cast {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cast__item {
+  padding: 1.5rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.cast__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+}
+
+.cast__pkg {
+  font-size: 1rem;
+  color: var(--paper);
+  word-break: break-word;
+}
+
+.cast__amount {
+  flex: none;
+  font-family: var(--font-display), serif;
+  font-size: 1.5rem;
+  color: var(--light);
+  font-variant-numeric: tabular-nums;
+}
+
+.cast__role {
+  margin: 0.4rem 0 0;
+  color: var(--paper);
+  font-size: 0.875rem;
+}
+
+.cast__why {
+  margin: 0.35rem 0 0;
+  color: var(--dim);
+  font-size: 0.8125rem;
+}
+
+/* The weight is shown as the length of a rule, because a progress bar would
+   be a chart element in a page that has no charts. */
+.weight {
+  height: 1px;
+  margin-top: 0.9rem;
+  background: var(--light);
+  opacity: 0.55;
+}
+
+.evidence {
+  margin: 0.9rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.75rem;
+  color: var(--dim);
+}
+
+.evidence li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.people {
+  margin: 0.9rem 0 0;
+  color: var(--dim);
+  font-size: 0.8125rem;
+}
+
+.people b {
+  color: var(--paper);
+  font-weight: 400;
+}
+
+.alone {
+  color: var(--light);
+}
+
+/* ---------- the roll ---------- */
+
+.roll {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  overflow-y: auto;
+  background: var(--screen);
+  text-align: center;
+}
+
+.roll__inner {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 60vh var(--gutter);
+}
+
+.roll__card {
+  margin: 0 0 4.5rem;
+}
+
+.roll__for {
+  margin: 0;
+  color: var(--dim);
+  font-size: 0.75rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.roll__name {
+  margin: 0.6rem 0 0;
+  font-family: var(--font-display), serif;
+  font-weight: 400;
+  font-size: clamp(1.75rem, 6vw, 2.75rem);
+  line-height: 1.15;
+  color: #4a443c;
+  transition:
+    color 900ms ease,
+    text-shadow 900ms ease;
+}
+
+/* A name is not given a badge. The projector reaches it. */
+.roll__name--paid {
+  color: var(--paper);
+  text-shadow: 0 0 36px rgba(240, 192, 112, 0.45);
+}
+
+.roll__state {
+  margin: 0.4rem 0 0;
+  min-height: 1.4em;
+  font-size: 0.8125rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+.roll__state--paid {
+  color: var(--light);
+}
+
+.roll__title {
+  margin: 0 0 5rem;
+  font-family: var(--font-display), serif;
+  font-weight: 400;
+  font-size: clamp(2.5rem, 10vw, 4.5rem);
+  line-height: 1;
+}
+
+.roll__end {
+  margin-top: 5rem;
+  color: var(--dim);
+  font-size: 0.8125rem;
+  line-height: 1.8;
+}
+
+.roll__close {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--screen);
+  color: var(--dim);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .roll__inner--playing {
+    animation: crawl 95s linear forwards;
+  }
+}
+
+@keyframes crawl {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(-100% + 40vh));
+  }
+}
+
+.footer {
+  margin-top: 5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+  color: var(--dim);
+  font-size: 0.75rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.fund {
+  margin-top: 1.5rem;
 }

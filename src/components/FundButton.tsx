@@ -2,17 +2,30 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type PayPalSession, captureOrder, createOrder, loadPayPal } from "@/lib/client/paypal-sdk";
-
-const BUDGET_CENTS = 25_00;
+import { money } from "@/lib/client/api";
 
 interface Status {
-  kind: "loading" | "ready" | "working" | "done" | "error";
+  kind: "loading" | "ready" | "working" | "error";
   message: string;
 }
 
-export function FundButton({ clientId }: { clientId: string }): React.JSX.Element {
+export function FundButton({
+  clientId,
+  budgetCents,
+  onCaptured,
+}: {
+  clientId: string;
+  budgetCents: number;
+  onCaptured: (orderId: string) => void;
+}): React.JSX.Element {
   const [status, setStatus] = useState<Status>({ kind: "loading", message: "Loading PayPal…" });
   const session = useRef<PayPalSession | null>(null);
+  // Held in a ref so a new callback from the parent does not tear down and
+  // rebuild the PayPal session mid-payment.
+  const captured = useRef(onCaptured);
+  useEffect(() => {
+    captured.current = onCaptured;
+  }, [onCaptured]);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,15 +41,15 @@ export function FundButton({ clientId }: { clientId: string }): React.JSX.Elemen
       session.current = instance.createPayPalOneTimePaymentSession({
         onApprove: async (data: { orderId: string }) => {
           setStatus({ kind: "working", message: "Confirming with PayPal…" });
-          const captured = await captureOrder(data.orderId);
-          setStatus(
-            captured.ok
-              ? { kind: "done", message: `Captured $${captured.amount ?? "?"} — status ${captured.status ?? "?"}` }
-              : { kind: "error", message: "The capture failed. See the server logs." },
-          );
+          const result = await captureOrder(data.orderId);
+          if (result.ok) {
+            captured.current(data.orderId);
+            return;
+          }
+          setStatus({ kind: "error", message: "PayPal could not take the payment." });
         },
         onCancel: () => {
-          setStatus({ kind: "ready", message: "Payment cancelled." });
+          setStatus({ kind: "ready", message: "" });
         },
         onError: () => {
           setStatus({ kind: "error", message: "PayPal reported an error." });
@@ -57,18 +70,18 @@ export function FundButton({ clientId }: { clientId: string }): React.JSX.Elemen
     const current = session.current;
     if (current === null) return;
     setStatus({ kind: "working", message: "Opening PayPal…" });
-    current.start({ presentationMode: "auto" }, createOrder(BUDGET_CENTS)).catch(() => {
+    current.start({ presentationMode: "auto" }, createOrder(budgetCents)).catch(() => {
       setStatus({ kind: "error", message: "Could not start the payment." });
     });
-  }, []);
+  }, [budgetCents]);
 
   return (
     <div className="fund">
-      <button type="button" onClick={pay} disabled={status.kind !== "ready"} className="fund__button">
-        Fund $25.00
+      <button type="button" onClick={pay} disabled={status.kind !== "ready"} className="button">
+        {status.kind === "loading" ? "Loading PayPal…" : `Fund ${money(budgetCents)}`}
       </button>
-      <p role="status" className="fund__status">
-        {status.kind === "loading" ? "Loading PayPal…" : status.message}
+      <p role="status" className="hint">
+        {status.message}
       </p>
     </div>
   );
