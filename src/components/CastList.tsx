@@ -1,4 +1,12 @@
 import { type Plan, money } from "@/lib/client/api";
+import { count } from "@/lib/domain/text";
+
+/** How the plan was weighed, and why the agent sat out when it did. */
+function weighedBy(plan: Plan): string {
+  if (plan.agentUsed) return "weighed by the agent";
+  if (plan.agentOutcome === "busy") return "weighed by measurement alone while the agent is at its rate limit";
+  return "weighed by measurement alone";
+}
 
 /** The widest weight in the plan, so the rules are drawn relative to it. */
 function longest(plan: Plan): number {
@@ -22,7 +30,7 @@ export function CastList({ plan }: { plan: Plan }): React.JSX.Element {
       <div className="act__head">
         <h2 className="act__title">The cast</h2>
         <p className="act__meta">
-          {plan.filesRead} files read{plan.agentUsed ? ", weighed by the agent" : ", weighed by measurement alone"}
+          {count(plan.filesRead, "file")} read, {weighedBy(plan)}
         </p>
       </div>
 

@@ -1,5 +1,5 @@
 import "server-only";
-import { type AgentInput, judgePackages } from "@/lib/ai/attribute";
+import { type AgentInput, type Outcome, type Verdict, judgePackages } from "@/lib/ai/attribute";
 import { factorFromImportance } from "@/lib/ai/contract";
 import {
   type Comparison,
@@ -13,6 +13,7 @@ import { type ImportSite } from "@/lib/domain/imports";
 import { type Maintainer } from "@/lib/domain/people";
 import { type RepoRef, repoSlug } from "@/lib/domain/repo-ref";
 import { type Allocation, type WeightedPackage, splitBudget } from "@/lib/domain/split";
+import { count } from "@/lib/domain/text";
 import { adjustForMaintainers, topEvidence, weighPackages } from "@/lib/domain/weight";
 import { resolvePeople } from "./people";
 import { scanRepo } from "./scan";
@@ -38,6 +39,8 @@ export interface PaymentPlan {
   filesRead: number;
   /** True when the agent ran. False means the measured weighting alone decided. */
   agentUsed: boolean;
+  /** Why the agent did or did not judge this plan, so the page can say so. */
+  agentOutcome: Outcome;
   packages: PlannedPackage[];
   allocations: Allocation[];
   totalCents: number;
@@ -51,6 +54,17 @@ export interface PaymentPlan {
 
 /** Looking up people is the slow part, so only the packages that can earn are resolved. */
 const MAX_PACKAGES = 12;
+
+/** What to tell the person about the agent, in words that say why when it did not run. */
+function agentReport(verdict: Verdict, judged: number): string {
+  if (verdict.outcome === "judged") {
+    const fallback = verdict.model !== null && verdict.model !== "openai/gpt-oss-120b";
+    return `The agent judged ${count(judged, "package")}${fallback ? ", on the smaller model while the larger was busy" : ""}`;
+  }
+  if (verdict.outcome === "busy") return "The agent is at its rate limit just now, so measurement alone decides";
+  if (verdict.outcome === "unavailable") return "No AI key is set, so measurement alone decides";
+  return "The agent could not answer, so measurement alone decides";
+}
 
 /**
  * Turns a repository and a budget into who gets paid what.
@@ -70,12 +84,15 @@ export async function planPayments(
 
   const measured = new Map(weighPackages(scan.packages).map((w) => [w.pkg, w]));
   const earning = scan.packages.filter((p) => (measured.get(p.name)?.score ?? 0) > 0).slice(0, MAX_PACKAGES);
-  say(`Read ${scan.filesRead} files, ${scan.packages.length} dependencies, ${earning.length} actually used`);
+  say(
+    `Read ${count(scan.filesRead, "file")}, ${count(scan.packages.length, "dependency", "dependencies")}, ` +
+      `${earning.length} actually used`,
+  );
 
-  say(`Finding who maintains ${earning.length} packages`);
+  say(`Finding who maintains ${count(earning.length, "package")}`);
   const people = new Map((await resolvePeople(earning.map((p) => p.name))).map((p) => [p.pkg, p]));
   const heads = [...people.values()].reduce((n, p) => n + p.maintainers.length, 0);
-  say(`Found ${heads} maintainers`);
+  say(`Found ${count(heads, "maintainer")}`);
 
   const agentInput: AgentInput[] = earning.map((p) => ({
     pkg: p.name,
@@ -86,10 +103,9 @@ export async function planPayments(
     evidence: topEvidence(p.sites),
   }));
   say("Asking the agent what each package does here");
-  const judged = new Map((await judgePackages(agentInput)).map((j) => [j.pkg, j]));
-  say(
-    judged.size > 0 ? `The agent judged ${judged.size} packages` : "No agent available; using the measured weighting",
-  );
+  const verdict = await judgePackages(agentInput);
+  const judged = new Map(verdict.judgements.map((j) => [j.pkg, j]));
+  say(agentReport(verdict, judged.size));
 
   const packages: PlannedPackage[] = earning.map((p) => {
     const base = measured.get(p.name) ?? { pkg: p.name, score: 0, reason: "" };
@@ -107,14 +123,14 @@ export async function planPayments(
       base,
       found.maintainers.map((m) => m.share),
     );
-    const verdict = judged.get(p.name);
-    const factor = verdict === undefined ? 1 : factorFromImportance(verdict.importance);
+    const opinion = judged.get(p.name);
+    const factor = opinion === undefined ? 1 : factorFromImportance(opinion.importance);
 
     return {
       pkg: p.name,
       score: adjusted.score * factor,
-      reason: verdict === undefined ? adjusted.reason : `${adjusted.reason} ${verdict.reason}`,
-      role: verdict?.role ?? null,
+      reason: opinion === undefined ? adjusted.reason : `${adjusted.reason} ${opinion.reason}`,
+      role: opinion?.role ?? null,
       evidence: topEvidence(p.sites),
       repo: found.repo,
       maintainers: found.maintainers,
@@ -123,7 +139,7 @@ export async function planPayments(
     };
   });
 
-  return finish({ scan, budgetCents, packages, agentUsed: judged.size > 0, say });
+  return finish({ scan, budgetCents, packages, agentUsed: judged.size > 0, agentOutcome: verdict.outcome, say });
 }
 
 interface Finishing {
@@ -131,11 +147,12 @@ interface Finishing {
   budgetCents: number;
   packages: PlannedPackage[];
   agentUsed: boolean;
+  agentOutcome: Outcome;
   say: (message: string) => void;
 }
 
 /** Works out who cannot be paid, splits the budget, and assembles the plan. */
-function finish({ scan, budgetCents, packages, agentUsed, say }: Finishing): PaymentPlan {
+function finish({ scan, budgetCents, packages, agentUsed, agentOutcome, say }: Finishing): PaymentPlan {
   const unpayable = packages
     .filter((p) => p.maintainers.length === 0)
     .map((p) => ({
@@ -153,7 +170,7 @@ function finish({ scan, budgetCents, packages, agentUsed, say }: Finishing): Pay
 
   const split =
     weighted.length > 0 ? splitBudget(budgetCents, weighted) : { allocations: [], totalCents: 0, belowMinimum: [] };
-  say(`Splitting the budget across ${split.allocations.length} people`);
+  say(`Splitting the budget across ${count(split.allocations.length, "person", "people")}`);
 
   const comparison = compareSplits(budgetCents, scan.packages, totalsByPackage(split.allocations));
 
@@ -162,6 +179,7 @@ function finish({ scan, budgetCents, packages, agentUsed, say }: Finishing): Pay
     budgetCents,
     filesRead: scan.filesRead,
     agentUsed,
+    agentOutcome,
     packages: [...packages].sort((a, b) => b.score - a.score || a.pkg.localeCompare(b.pkg)),
     allocations: split.allocations,
     totalCents: split.totalCents,

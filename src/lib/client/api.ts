@@ -68,6 +68,7 @@ export interface Plan {
   budgetCents: number;
   filesRead: number;
   agentUsed: boolean;
+  agentOutcome: "judged" | "busy" | "unavailable" | "failed";
   packages: PlannedPackage[];
   allocations: Allocation[];
   totalCents: number;

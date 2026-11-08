@@ -48,11 +48,13 @@ const UPSTREAM_CACHE = { next: { revalidate: 3600 } } as const;
 
 async function api(path: string): Promise<unknown> {
   const res = await fetch(`${API}${path}`, { headers: headers(), ...UPSTREAM_CACHE });
-  if (res.status === 404) throw new GitHubError("repository or file not found", 404);
+  if (res.status === 404) throw new GitHubError("That repository does not exist, or is not public.", 404);
   if (res.status === 403 || res.status === 429) {
-    throw new GitHubError("GitHub rate limit reached; set GITHUB_TOKEN", 429);
+    // Without GITHUB_TOKEN this arrives after sixty requests an hour.
+    console.error("GitHub rate limit reached");
+    throw new GitHubError("GitHub is limiting requests just now. Try again in a few minutes.", 429);
   }
-  if (!res.ok) throw new GitHubError(`GitHub returned ${res.status}`, res.status);
+  if (!res.ok) throw new GitHubError("GitHub could not be reached. Try again in a moment.", res.status);
   return res.json();
 }
 
@@ -69,7 +71,7 @@ export async function fetchFile(ref: RepoRef, branch: string, path: string): Pro
     ...UPSTREAM_CACHE,
   });
   if (res.status === 404) return null;
-  if (!res.ok) throw new GitHubError(`could not read ${path}`, res.status);
+  if (!res.ok) throw new GitHubError(`GitHub would not return ${path}. Try again in a moment.`, res.status);
   return res.text();
 }
 

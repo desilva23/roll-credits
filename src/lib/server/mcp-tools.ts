@@ -1,6 +1,7 @@
 import "server-only";
 import { toAmountValue } from "@/lib/domain/budget";
 import { parseRepoRef, repoSlug } from "@/lib/domain/repo-ref";
+import { count } from "@/lib/domain/text";
 import { z } from "@/lib/zod";
 import { GitHubError } from "./github";
 import { openOrder } from "./orders";
@@ -77,9 +78,10 @@ function earned(plan: PaymentPlan, pkg: string): number {
 /** The plan as a short brief the agent can relay, with evidence a person can check. */
 function describe(plan: PaymentPlan): string {
   const lines = [
-    `Roll Credits read ${plan.repo}: ${plan.filesRead} files, ${plan.comparison.rows.length} dependencies.`,
+    `Roll Credits read ${plan.repo}: ${count(plan.filesRead, "file")}, ` +
+      `${count(plan.comparison.rows.length, "dependency", "dependencies")}.`,
     "",
-    `For a ${usd(plan.budgetCents)} budget, paid to ${plan.allocations.length} people:`,
+    `For a ${usd(plan.budgetCents)} budget, paid to ${count(plan.allocations.length, "person", "people")}:`,
   ];
 
   // Listed by what each package earns, so the brief reads in the order the money goes.

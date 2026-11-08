@@ -7,6 +7,7 @@ import { FundButton } from "@/components/FundButton";
 import { LedgerGrid } from "@/components/LedgerGrid";
 import { type View, ViewTabs } from "@/components/ViewTabs";
 import { type Plan, money } from "@/lib/client/api";
+import { count } from "@/lib/domain/text";
 
 /** Everything shown once a repository has been read: the argument, the detail, and the button. */
 export function PlanView({
@@ -34,7 +35,7 @@ export function PlanView({
         <div className="act__head">
           <h2 className="act__title">Pay them</h2>
           <p className="act__meta">
-            {money(plan.totalCents)} to {plan.allocations.length} people
+            {money(plan.totalCents)} to {count(plan.allocations.length, "person", "people")}
           </p>
         </div>
         {paying ? (

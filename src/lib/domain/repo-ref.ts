@@ -14,7 +14,7 @@ const SEGMENT = /^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,98}[A-Za-z0-9_-])?$/;
  */
 export function parseRepoRef(input: string): RepoRef {
   const trimmed = input.trim();
-  if (trimmed === "") throw new RangeError("give a GitHub repository");
+  if (trimmed === "") throw new RangeError("Enter a GitHub repository, like owner/name.");
 
   const withoutScheme = trimmed
     .replace(/^git\+/, "")
@@ -22,10 +22,12 @@ export function parseRepoRef(input: string): RepoRef {
     .replace(/^(?:www\.)?github\.com[/:]/, "");
 
   const [owner, rawName] = withoutScheme.split("/");
-  if (owner === undefined || rawName === undefined) throw new RangeError("expected owner/name");
+  if (owner === undefined || rawName === undefined) {
+    throw new RangeError("Enter the repository as owner/name, or paste its GitHub address.");
+  }
 
   const name = rawName.replace(/\.git$/, "");
-  if (!SEGMENT.test(owner) || !SEGMENT.test(name)) throw new RangeError("not a GitHub repository name");
+  if (!SEGMENT.test(owner) || !SEGMENT.test(name)) throw new RangeError("That is not a GitHub repository name.");
 
   return { owner, name };
 }

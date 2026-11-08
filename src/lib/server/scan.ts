@@ -33,13 +33,18 @@ export async function scanRepo(ref: RepoRef): Promise<ScanResult> {
   const branch = await defaultBranch(ref);
 
   const manifest = await fetchFile(ref, branch, "package.json");
-  if (manifest === null) throw new GitHubError("no package.json at the repository root", 404);
+  if (manifest === null) {
+    throw new GitHubError(
+      "Roll Credits reads JavaScript and TypeScript projects for now, and this repository has no package.json.",
+      404,
+    );
+  }
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(manifest);
   } catch {
-    throw new GitHubError("package.json is not valid JSON", 422);
+    throw new GitHubError("This repository's package.json could not be read.", 422);
   }
 
   const declared = directDependencies(parsed);

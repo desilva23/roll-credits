@@ -1,4 +1,5 @@
 import { type Plan, money } from "@/lib/client/api";
+import { count } from "@/lib/domain/text";
 
 /**
  * The project's argument as three measured lines: the same budget, split the
@@ -16,7 +17,8 @@ export function CompareSummary({ plan }: { plan: Plan }): React.JSX.Element {
           Against a dependency list
         </h2>
         <p className="act__meta">
-          {money(plan.budgetCents)} split evenly across all {comparison.rows.length} dependencies, beside this plan
+          {money(plan.budgetCents)} split evenly across all{" "}
+          {count(comparison.rows.length, "dependency", "dependencies")}, beside this plan
         </p>
       </div>
 
