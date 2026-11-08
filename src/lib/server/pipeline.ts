@@ -3,7 +3,7 @@ import { type AgentInput, judgePackages } from "@/lib/ai/attribute";
 import { factorFromImportance } from "@/lib/ai/contract";
 import { type ImportSite } from "@/lib/domain/imports";
 import { type Maintainer } from "@/lib/domain/people";
-import { type RepoRef } from "@/lib/domain/repo-ref";
+import { type RepoRef, repoSlug } from "@/lib/domain/repo-ref";
 import { type Allocation, type WeightedPackage, splitBudget } from "@/lib/domain/split";
 import { adjustForMaintainers, topEvidence, weighPackages } from "@/lib/domain/weight";
 import { resolvePeople } from "./people";
@@ -48,13 +48,22 @@ const MAX_PACKAGES = 12;
  * `splitBudget` alone decides money, and it works unchanged when the agent
  * does not run.
  */
-export async function planPayments(ref: RepoRef, budgetCents: number): Promise<PaymentPlan> {
+export async function planPayments(
+  ref: RepoRef,
+  budgetCents: number,
+  say: (message: string) => void = () => undefined,
+): Promise<PaymentPlan> {
+  say(`Reading ${repoSlug(ref)}`);
   const scan = await scanRepo(ref);
 
   const measured = new Map(weighPackages(scan.packages).map((w) => [w.pkg, w]));
   const earning = scan.packages.filter((p) => (measured.get(p.name)?.score ?? 0) > 0).slice(0, MAX_PACKAGES);
+  say(`Read ${scan.filesRead} files, ${scan.packages.length} dependencies, ${earning.length} actually used`);
 
+  say(`Finding who maintains ${earning.length} packages`);
   const people = new Map((await resolvePeople(earning.map((p) => p.name))).map((p) => [p.pkg, p]));
+  const heads = [...people.values()].reduce((n, p) => n + p.maintainers.length, 0);
+  say(`Found ${heads} maintainers`);
 
   const agentInput: AgentInput[] = earning.map((p) => ({
     pkg: p.name,
@@ -64,7 +73,11 @@ export async function planPayments(ref: RepoRef, budgetCents: number): Promise<P
     description: people.get(p.name)?.description ?? null,
     evidence: topEvidence(p.sites),
   }));
+  say("Asking the agent what each package does here");
   const judged = new Map((await judgePackages(agentInput)).map((j) => [j.pkg, j]));
+  say(
+    judged.size > 0 ? `The agent judged ${judged.size} packages` : "No agent available; using the measured weighting",
+  );
 
   const packages: PlannedPackage[] = earning.map((p) => {
     const base = measured.get(p.name) ?? { pkg: p.name, score: 0, reason: "" };
@@ -98,6 +111,19 @@ export async function planPayments(ref: RepoRef, budgetCents: number): Promise<P
     };
   });
 
+  return finish({ scan, budgetCents, packages, agentUsed: judged.size > 0, say });
+}
+
+interface Finishing {
+  scan: { repo: string; filesRead: number };
+  budgetCents: number;
+  packages: PlannedPackage[];
+  agentUsed: boolean;
+  say: (message: string) => void;
+}
+
+/** Works out who cannot be paid, splits the budget, and assembles the plan. */
+function finish({ scan, budgetCents, packages, agentUsed, say }: Finishing): PaymentPlan {
   const unpayable = packages
     .filter((p) => p.maintainers.length === 0)
     .map((p) => ({
@@ -115,12 +141,13 @@ export async function planPayments(ref: RepoRef, budgetCents: number): Promise<P
 
   const split =
     weighted.length > 0 ? splitBudget(budgetCents, weighted) : { allocations: [], totalCents: 0, belowMinimum: [] };
+  say(`Splitting the budget across ${split.allocations.length} people`);
 
   return {
     repo: scan.repo,
     budgetCents,
     filesRead: scan.filesRead,
-    agentUsed: judged.size > 0,
+    agentUsed,
     packages: [...packages].sort((a, b) => b.score - a.score || a.pkg.localeCompare(b.pkg)),
     allocations: split.allocations,
     totalCents: split.totalCents,

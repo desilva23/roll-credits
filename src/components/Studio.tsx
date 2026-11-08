@@ -5,6 +5,7 @@ import { CastList } from "@/components/CastList";
 import { CreditsRoll } from "@/components/CreditsRoll";
 import { FundButton } from "@/components/FundButton";
 import { LedgerGrid } from "@/components/LedgerGrid";
+import { ReadingSteps } from "@/components/ReadingSteps";
 import { RepoField } from "@/components/RepoField";
 import { type View, ViewTabs } from "@/components/ViewTabs";
 import { type PayoutRun, type Plan, money, readRepo, startPayouts } from "@/lib/client/api";
@@ -22,12 +23,16 @@ export function Studio({ clientId }: { clientId: string }): React.JSX.Element {
   const [stage, setStage] = useState<Stage>({ at: "idle" });
   const [problem, setProblem] = useState<string | null>(null);
   const [view, setView] = useState<View>("credits");
+  const [steps, setSteps] = useState<string[]>([]);
 
   const read = useCallback((which: string) => {
     if (which.trim() === "") return;
     setProblem(null);
+    setSteps([]);
     setStage({ at: "reading" });
-    void readRepo(which, BUDGET_CENTS).then(
+    void readRepo(which, BUDGET_CENTS, (message) => {
+      setSteps((before) => [...before, message]);
+    }).then(
       (plan) => {
         setStage({ at: "plan", plan });
       },
@@ -73,6 +78,7 @@ export function Studio({ clientId }: { clientId: string }): React.JSX.Element {
   return (
     <>
       <RepoField busy={busy} onRead={read} />
+      {stage.at === "reading" ? <ReadingSteps steps={steps} /> : null}
       {problem === null ? null : <p className="notice">{problem}</p>}
       {plan === null ? null : (
         <>

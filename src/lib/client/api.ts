@@ -69,8 +69,47 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return payload;
 }
 
-export const readRepo = (repo: string, budgetCents: number): Promise<Plan> =>
-  post<Plan>("/api/plan", { repo, budgetCents });
+/** Reads one streamed line: reports a step, returns a plan, or throws the server's error. */
+function handle(text: string, onStep: (message: string) => void): Plan | null {
+  if (text.trim() === "") return null;
+  const message = JSON.parse(text) as { step?: string; plan?: Plan; error?: string };
+  if (message.error !== undefined) throw new Error(message.error);
+  if (message.step !== undefined) onStep(message.step);
+  return message.plan ?? null;
+}
+
+/**
+ * Reads a repository, calling `onStep` as each stage finishes.
+ *
+ * The response is newline-delimited JSON rather than one object, so the page
+ * can say what is happening across the twenty seconds the read takes.
+ */
+export async function readRepo(repo: string, budgetCents: number, onStep: (message: string) => void): Promise<Plan> {
+  const res = await fetch("/api/plan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ repo, budgetCents }),
+  });
+  if (res.body === null) throw new Error("No response from the server.");
+
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  let plan: Plan | null = null;
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += value;
+
+    // The last piece may be half a line, so it waits for the next chunk.
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const text of lines) plan = handle(text, onStep) ?? plan;
+  }
+
+  if (plan === null) throw new Error("The read ended without a plan.");
+  return plan;
+}
 
 export const startPayouts = (orderId: string, repo: string): Promise<PayoutRun> =>
   post<PayoutRun>("/api/payouts", { orderId, repo });

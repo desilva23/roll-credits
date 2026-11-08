@@ -438,3 +438,25 @@ a {
 .ledger {
   margin-top: 1.75rem;
 }
+
+/* ---------- what it is doing ---------- */
+
+.steps {
+  margin: 1.75rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.8125rem;
+  color: #5f574d;
+}
+
+.steps li {
+  padding: 0.2rem 0;
+}
+
+.steps li::before {
+  content: "· ";
+}
+
+.steps__now {
+  color: var(--light);
+}
