@@ -23,13 +23,20 @@ export interface PayoutRun {
 }
 
 /**
- * Only this one real sandbox account can receive money. Everyone else is sent
- * to a `@example.com` address, which PayPal accepts and then reports as
- * UNCLAIMED. That is both the honest demonstration — almost no maintainer has
- * a payment route today — and the hard guarantee that nothing this project
- * sends can reach a real person's inbox.
+ * The sandbox accounts that can receive money, standing in for maintainers who
+ * have PayPal. Everyone else is sent to a `@example.com` address, which PayPal
+ * accepts and then reports as UNCLAIMED. So a run shows both of PayPal's
+ * outcomes — almost no maintainer has a payment route today — and every
+ * address is under `example.com`, the hard guarantee that nothing this
+ * project sends can reach a real person's inbox.
  */
-const CLAIMED_RECEIVER = process.env.PAYPAL_SANDBOX_RECEIVER ?? "sb-io9zf53636210@personal.example.com";
+const SANDBOX_RECEIVERS = [
+  "sb-io9zf53636210@personal.example.com",
+  "sb-zyv47x53813327@personal.example.com",
+  "sb-eu8xe53813324@personal.example.com",
+  "sb-afsyq53813320@personal.example.com",
+  "sb-5qva853813301@personal.example.com",
+] as const;
 
 /** One run per order, so retrying a failed request cannot pay twice. */
 function batchIdFor(orderId: string): string {
@@ -50,10 +57,11 @@ export async function sendPayouts(orderId: string, allocations: readonly Allocat
     // Payouts spells this `currency`. Orders v2 spells the same thing
     // `currency_code`, and sending that here fails with "may not be null".
     amount: { value: toAmountValue(a.cents), currency: "USD" },
-    // One sandbox account stands in for a maintainer who has PayPal. The rest
-    // go to addresses with no PayPal account, so PayPal holds their money for
-    // them to claim and returns it to the sender after 30 days.
-    receiver: index === 0 ? CLAIMED_RECEIVER : `unclaimed-${a.id}@example.com`,
+    // The split lists the largest amounts first, so those reach the sandbox
+    // accounts, one each. The rest go to addresses with no PayPal account, so
+    // PayPal holds their money for them to claim and returns it to the sender
+    // after 30 days.
+    receiver: SANDBOX_RECEIVERS[index] ?? `unclaimed-${a.id}@example.com`,
     note: "Thank you for the code this project is built on.",
     sender_item_id: a.id,
   }));

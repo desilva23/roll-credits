@@ -40,12 +40,17 @@ describe("sendPayouts", () => {
     expect(sentBody().items[0]?.amount).toEqual({ value: "8.19", currency: "USD" });
   });
 
-  it("lets only the one claimed sandbox account receive; everyone else resolves to example.com", async () => {
+  it("pays the five largest amounts into sandbox accounts, one each, and everyone else at example.com", async () => {
     call.mockResolvedValueOnce(created);
-    await sendPayouts("ORDER1", [allocation("a", 500), allocation("b", 300), allocation("c", 200)]);
+    const largestFirst = ["a", "b", "c", "d", "e", "f", "g"].map((id, rank) => allocation(id, 700 - rank * 100));
+    await sendPayouts("ORDER1", largestFirst);
     const receivers = sentBody().items.map((item) => item.receiver);
-    expect(receivers[0]).toMatch(/@personal\.example\.com$/);
-    expect(receivers.slice(1)).toEqual(["unclaimed-b@example.com", "unclaimed-c@example.com"]);
+    // Every address is under example.com, so nothing sent can reach a real inbox.
+    for (const receiver of receivers) expect(receiver).toMatch(/[@.]example\.com$/);
+    const sandbox = receivers.slice(0, 5);
+    for (const receiver of sandbox) expect(receiver).toMatch(/@personal\.example\.com$/);
+    expect(new Set(sandbox).size).toBe(5);
+    expect(receivers.slice(5)).toEqual(["unclaimed-f@example.com", "unclaimed-g@example.com"]);
   });
 
   it("derives the batch id from the order, so a retry is refused by PayPal instead of paying twice", async () => {

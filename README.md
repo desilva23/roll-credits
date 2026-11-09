@@ -14,7 +14,7 @@ a film-credits roll where each name lights up as PayPal confirms the money arriv
 
 Built for the PayPal AI Hackathon 2026.
 
-![The credits roll for a real sandbox payout: one maintainer's generated name lit as paid, the next waiting to be claimed](docs/screenshots/roll.jpg)
+![The credits roll for a real sandbox payout: four maintainers' generated names lit as paid, the next waiting to be claimed](docs/screenshots/roll.jpg)
 
 ---
 
@@ -83,14 +83,14 @@ official MCP client SDK. See [`src/app/api/mcp/route.ts`](src/app/api/mcp/route.
 
 ## What is real, and what is not
 
-|              |                                                                                                                     |
-| ------------ | ------------------------------------------------------------------------------------------------------------------- |
-| **Real**     | Every PayPal call. Orders, capture, Payouts, signature-verified webhooks — all against the PayPal **sandbox**       |
-| **Real**     | The code reading. Live GitHub and npm data, no fixtures                                                             |
-| **Real**     | The AI judgements. Groq, made when a codebase is first read and remembered for a week                               |
-| **Not real** | The money. Sandbox only. The app refuses to talk to live PayPal — the base URL is hard-coded                        |
-| **Not real** | The names. Every maintainer appears under a generated film-credit name                                              |
-| **Not real** | The recipients. One sandbox test address can receive; all others resolve to `example.com` and come back `UNCLAIMED` |
+|              |                                                                                                                                            |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Real**     | Every PayPal call. Orders, capture, Payouts, signature-verified webhooks — all against the PayPal **sandbox**                              |
+| **Real**     | The code reading. Live GitHub and npm data, no fixtures                                                                                    |
+| **Real**     | The AI judgements. Groq, made when a codebase is first read and remembered for a week                                                      |
+| **Not real** | The money. Sandbox only. The app refuses to talk to live PayPal — the base URL is hard-coded                                               |
+| **Not real** | The names. Every maintainer appears under a generated film-credit name                                                                     |
+| **Not real** | The recipients. Five sandbox test accounts receive the largest amounts; everyone else resolves to `example.com` and comes back `UNCLAIMED` |
 
 ### Why nobody is named
 
@@ -148,7 +148,9 @@ npm run dev
 
 Create a **United States** sandbox business account and a sandbox personal account at
 [developer.paypal.com](https://developer.paypal.com/), make an app against the business account with **Payouts**
-enabled, and copy its client ID and secret into `.env.local`.
+enabled, and copy its client ID and secret into `.env.local`. Payouts go to the five sandbox accounts listed in
+[`src/lib/server/payouts.ts`](src/lib/server/payouts.ts); put personal accounts from your own sandbox there to see
+them marked paid.
 
 **It works without an AI key.** With `GROQ_API_KEY` unset, the agent is skipped and the measured weighting decides on
 its own — the whole flow still runs end to end.
