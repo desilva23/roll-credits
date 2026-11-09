@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseRepoRef, repoSlug } from "./repo-ref";
+import { lineUrl, parseRepoRef, repoSlug } from "./repo-ref";
 
 describe("parseRepoRef", () => {
   it.each([
@@ -32,5 +32,19 @@ describe("parseRepoRef", () => {
 describe("repoSlug", () => {
   it("joins owner and name", () => {
     expect(repoSlug({ owner: "vercel", name: "next.js" })).toBe("vercel/next.js");
+  });
+});
+
+describe("lineUrl", () => {
+  it("links one line of a file on the default branch", () => {
+    expect(lineUrl("desilva23/celebration-planner", "src/lib/zod.ts", 3)).toBe(
+      "https://github.com/desilva23/celebration-planner/blob/HEAD/src/lib/zod.ts#L3",
+    );
+  });
+
+  it("escapes what a path may hold and a URL may not, keeping the folders", () => {
+    expect(lineUrl("a/b", "app/[id]/page #1.tsx", 12)).toBe(
+      "https://github.com/a/b/blob/HEAD/app/%5Bid%5D/page%20%231.tsx#L12",
+    );
   });
 });

@@ -1,4 +1,5 @@
 import { type Plan, money } from "@/lib/client/api";
+import { lineUrl } from "@/lib/domain/repo-ref";
 import { count } from "@/lib/domain/text";
 
 /** How the plan was weighed, and why the agent sat out when it did. */
@@ -51,7 +52,11 @@ export function CastList({ plan }: { plan: Plan }): React.JSX.Element {
               <ul className="evidence">
                 {p.evidence.map((e) => (
                   <li key={`${e.path}:${e.line}`}>
-                    {e.path}:{e.line} {e.text}
+                    <a href={lineUrl(plan.repo, e.path, e.line)} target="_blank" rel="noreferrer">
+                      {e.path}:{e.line}
+                      <span className="visually-hidden"> (GitHub, new tab)</span>
+                    </a>{" "}
+                    {e.text}
                   </li>
                 ))}
               </ul>

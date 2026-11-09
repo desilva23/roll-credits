@@ -36,3 +36,13 @@ export function parseRepoRef(input: string): RepoRef {
 export function repoSlug(ref: RepoRef): string {
   return `${ref.owner}/${ref.name}`;
 }
+
+/**
+ * A link to one line of a file on GitHub, so every piece of evidence can be
+ * checked against the code it came from. `HEAD` is the default branch, which
+ * is the branch the scan read.
+ */
+export function lineUrl(slug: string, path: string, line: number): string {
+  const file = path.split("/").map(encodeURIComponent).join("/");
+  return `https://github.com/${slug}/blob/HEAD/${file}#L${line}`;
+}

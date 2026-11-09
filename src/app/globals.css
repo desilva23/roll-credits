@@ -435,8 +435,125 @@ a {
   margin-top: 1.75rem;
 }
 
+/*
+ * The ledger is a spreadsheet, so on a wide screen it takes the room one
+ * needs, centred on the column of text above it. On a phone it is the column.
+ */
 .ledger {
+  --wide: min(100vw - 2 * var(--gutter), 90rem);
+  width: var(--wide);
   margin-top: 1.75rem;
+  margin-left: calc((100% - var(--wide)) / 2);
+}
+
+.ledger__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 0.9rem;
+}
+
+.ledger__filter input {
+  width: 24ch;
+  max-width: 100%;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--screen);
+  color: var(--paper);
+  font: inherit;
+  font-size: 0.8125rem;
+  appearance: none;
+}
+
+.ledger__filter input::placeholder {
+  color: #5f574d;
+}
+
+.ledger__count,
+.ledger__note {
+  margin: 0;
+  color: var(--dim);
+  font-size: 0.8125rem;
+}
+
+.ledger__note {
+  margin-bottom: 0.9rem;
+}
+
+.ledger__export {
+  margin-left: auto;
+  padding: 0.55rem 1rem;
+  font-size: 0.8125rem;
+}
+
+.ledger__none {
+  color: var(--dim);
+}
+
+/* Evidence links: quiet until pointed at. Focus fills the link, so a cell's
+   clipped edges cannot hide where the keyboard is. */
+.ledger__line,
+.evidence a {
+  text-decoration: underline;
+  text-decoration-color: var(--line);
+  text-underline-offset: 3px;
+}
+
+.ledger__line {
+  color: var(--paper);
+}
+
+.ledger__line:hover,
+.evidence a:hover {
+  text-decoration-color: var(--light);
+}
+
+.ledger__line:focus-visible,
+.evidence a:focus-visible {
+  outline: none;
+  background: var(--light);
+  color: var(--screen);
+  text-decoration: none;
+}
+
+/* The change against the dependency list, as a bar either side of zero. */
+.shift {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+.shift__track {
+  position: relative;
+  flex: 0 0 4rem;
+  height: 0.375rem;
+  background: linear-gradient(var(--line), var(--line)) center / 1px 100% no-repeat;
+}
+
+.shift__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.shift__fill--up {
+  left: 50%;
+  background: var(--light);
+}
+
+.shift__fill--down {
+  right: 50%;
+  background: var(--dim);
+}
+
+.shift__value {
+  min-width: 7ch;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 /* ---------- what it is doing ---------- */

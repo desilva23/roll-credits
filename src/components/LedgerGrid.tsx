@@ -1,14 +1,17 @@
 "use client";
 
 import { AllCommunityModule, ModuleRegistry, colorSchemeDark, themeQuartz } from "ag-grid-community";
-import type { ColDef, ValueFormatterParams } from "ag-grid-community";
+import type { ProcessCellForExportParams } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
+import { ledgerColumns } from "@/components/LedgerColumns";
 import { type Plan, money } from "@/lib/client/api";
+import { type LedgerRow, csvValue, ledgerRows, ledgerTotal, widestChange } from "@/lib/client/ledger";
+import { count } from "@/lib/domain/text";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-/** The grid wears the same four colours as the rest of the page, not its own. */
+/** The grid wears the same colours as the rest of the page, not its own. */
 const theme = themeQuartz.withPart(colorSchemeDark).withParams({
   backgroundColor: "#15110d",
   foregroundColor: "#ece5da",
@@ -17,6 +20,9 @@ const theme = themeQuartz.withPart(colorSchemeDark).withParams({
   borderColor: "#342a20",
   rowHoverColor: "#1d1710",
   accentColor: "#f0c070",
+  pinnedRowBackgroundColor: "#1d1710",
+  pinnedRowBorder: "1px solid #5f574d",
+  pinnedRowFontWeight: 600,
   fontFamily: "var(--font-mono), ui-monospace, monospace",
   headerFontSize: 12,
   fontSize: 13,
@@ -25,107 +31,72 @@ const theme = themeQuartz.withPart(colorSchemeDark).withParams({
   wrapperBorderRadius: 2,
 });
 
-interface Row {
-  pkg: string;
-  role: string;
-  shipped: number;
-  tests: number;
-  people: number;
-  topShare: number | null;
-  funded: boolean;
-  byList: number;
-  byCode: number;
+/** Said only when it is true, which it is whenever anyone can be paid. */
+function balance(total: LedgerRow): string | null {
+  if (total.byList !== total.byCode) return null;
+  return `Both splits come to ${money(total.byCode)}. Reading the code moves money between packages; it adds none.`;
 }
-
-/**
- * Every declared dependency, including the ones nothing imports, so the even
- * split and this plan can be read side by side. Counts are the real totals
- * from the scan, not the few evidence lines the credits view shows.
- */
-function rowsFrom(plan: Plan): Row[] {
-  const known = new Map(plan.packages.map((p) => [p.pkg, p]));
-  return plan.comparison.rows.map((row) => {
-    const p = known.get(row.pkg);
-    return {
-      pkg: row.pkg,
-      role: p?.role ?? "—",
-      shipped: row.productUses,
-      tests: row.testUses,
-      people: p?.maintainers.length ?? 0,
-      topShare: p?.maintainers[0]?.share ?? null,
-      funded: p?.alreadyFunded ?? false,
-      byList: row.byListCents,
-      byCode: row.byCodeCents,
-    };
-  });
-}
-
-const percent = (p: ValueFormatterParams<Row, number | null>): string =>
-  p.value === null || p.value === undefined ? "—" : `${Math.round(p.value * 100)}%`;
 
 /**
  * The same plan as a ledger. The credits list argues; this is for the person
- * who has to defend the spend afterwards and wants to sort by what they paid,
- * who is alone, and who already has funding.
+ * who has to defend the spend afterwards: sort by what was paid, by who is
+ * alone, or by who already has funding, filter to one package, follow any
+ * figure to the line of code behind it, and take the whole thing away as CSV.
  */
 export function LedgerGrid({ plan }: { plan: Plan }): React.JSX.Element {
-  const rows = useMemo(() => rowsFrom(plan), [plan]);
+  const grid = useRef<AgGridReact<LedgerRow>>(null);
+  const [filter, setFilter] = useState("");
+  const rows = useMemo(() => ledgerRows(plan), [plan]);
+  const [shown, setShown] = useState(rows.length);
+  const total = useMemo(() => ledgerTotal(rows), [rows]);
+  const columns = useMemo(() => ledgerColumns(plan.repo, widestChange(rows)), [plan.repo, rows]);
+  const note = balance(total);
 
-  const columns = useMemo<ColDef<Row>[]>(
-    () => [
-      { field: "pkg", headerName: "Package", flex: 2, minWidth: 150, pinned: "left" },
-      {
-        field: "role",
-        headerName: "What it does here",
-        flex: 3,
-        minWidth: 200,
-        // The agent's sentence is often wider than the column.
-        tooltip: (p: { value?: unknown }) => (typeof p.value === "string" ? p.value : ""),
-      },
-      { field: "shipped", headerName: "In shipped code", width: 150, type: "numericColumn" },
-      { field: "tests", headerName: "In tests", width: 110, type: "numericColumn" },
-      { field: "people", headerName: "Maintainers", width: 130, type: "numericColumn" },
-      {
-        field: "topShare",
-        headerName: "Top contributor",
-        width: 150,
-        type: "numericColumn",
-        valueFormatter: percent,
-        cellStyle: (p) => ((p.value ?? 0) >= 0.8 ? { color: "#f0c070" } : null),
-      },
-      {
-        field: "funded",
-        headerName: "Already funded",
-        width: 150,
-        valueFormatter: (p: ValueFormatterParams<Row, boolean>) => (p.value === true ? "yes" : "no"),
-      },
-      {
-        field: "byList",
-        headerName: "By dependency list",
-        width: 170,
-        type: "numericColumn",
-        valueFormatter: (p: ValueFormatterParams<Row, number>) => money(p.value ?? 0),
-      },
-      {
-        field: "byCode",
-        headerName: "Roll Credits",
-        width: 140,
-        type: "numericColumn",
-        sort: "desc",
-        valueFormatter: (p: ValueFormatterParams<Row, number>) => (p.value === 0 ? "—" : money(p.value ?? 0)),
-        cellStyle: { color: "#f0c070" },
-      },
-    ],
-    [],
-  );
+  const download = (): void => {
+    grid.current?.api.exportDataAsCsv({
+      fileName: `roll-credits-${plan.repo.replace("/", "-")}.csv`,
+      skipColumnGroupHeaders: true,
+      processCellCallback: (p: ProcessCellForExportParams<LedgerRow>) => csvValue(p.column.getColId(), p.value),
+    });
+  };
 
   return (
     <div className="ledger">
-      <AgGridReact<Row>
+      <div className="ledger__tools">
+        <label className="ledger__filter">
+          <span className="visually-hidden">Filter packages</span>
+          <input
+            type="search"
+            placeholder="Filter packages"
+            value={filter}
+            onChange={(event) => {
+              setFilter(event.target.value);
+            }}
+          />
+        </label>
+        <p className="ledger__count" aria-live="polite">
+          {shown === rows.length
+            ? count(rows.length, "dependency", "dependencies")
+            : `${shown} of ${count(rows.length, "dependency", "dependencies")}`}
+        </p>
+        <button type="button" className="button button--quiet ledger__export" onClick={download}>
+          Download CSV
+        </button>
+      </div>
+      {note === null ? null : <p className="ledger__note">{note}</p>}
+
+      <AgGridReact<LedgerRow>
+        ref={grid}
         theme={theme}
         rowData={rows}
+        pinnedBottomRowData={[total]}
         columnDefs={columns}
         defaultColDef={{ sortable: true, resizable: true }}
+        quickFilterText={filter}
+        localeText={{ noRowsToShow: "No dependency matches that filter" }}
+        onModelUpdated={(event) => {
+          setShown(event.api.getDisplayedRowCount());
+        }}
         domLayout="autoHeight"
         suppressCellFocus
       />
