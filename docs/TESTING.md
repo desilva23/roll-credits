@@ -1,6 +1,6 @@
 # Testing
 
-345 tests in 29 files.
+359 tests in 30 files.
 
 - **The domain layer — everything that decides money — has 100% statement, branch and function coverage**, enforced
   as a build threshold rather than reported as a figure.
@@ -15,20 +15,20 @@ npm run test:coverage   # coverage, which fails under 100% on the domain
 
 ## The domain: money and judgement
 
-| Area                                                             | Tests | What it pins down                                            |
-| ---------------------------------------------------------------- | ----- | ------------------------------------------------------------ |
-| [`split.test.ts`](../src/lib/domain/split.test.ts)               | 22    | The money rules. Includes 2,000 randomised splits            |
-| [`compare.test.ts`](../src/lib/domain/compare.test.ts)           | 13    | The dependency-list comparison, measured rather than claimed |
-| [`apportion.test.ts`](../src/lib/domain/apportion.test.ts)       | 12    | Splitting cents so the parts always sum to the whole         |
-| [`imports.test.ts`](../src/lib/domain/imports.test.ts)           | 33    | Which import forms count, and what is test code              |
-| [`people.test.ts`](../src/lib/domain/people.test.ts)             | 22    | Bot detection, shares, and that logins never leak            |
-| [`weight.test.ts`](../src/lib/domain/weight.test.ts)             | 20    | Scoring, and the lift for a lone maintainer                  |
-| [`stage-name.test.ts`](../src/lib/domain/stage-name.test.ts)     | 11    | Keyed names: stable, and unworkable without the secret       |
-| [`repo-ref.test.ts`](../src/lib/domain/repo-ref.test.ts)         | 19    | The repository forms people actually paste                   |
-| [`budget.test.ts`](../src/lib/domain/budget.test.ts)             | 13    | Amount formatting and range checks                           |
-| [`dependencies.test.ts`](../src/lib/domain/dependencies.test.ts) | 10    | Reading a `package.json` that may be malformed               |
-| [`text.test.ts`](../src/lib/domain/text.test.ts)                 | 5     | Counts said the way a person says them                       |
-| [`contract.test.ts`](../src/lib/ai/contract.test.ts)             | 11    | That a hostile model reply cannot move a weight far          |
+| Area                                                             | Tests | What it pins down                                                         |
+| ---------------------------------------------------------------- | ----- | ------------------------------------------------------------------------- |
+| [`split.test.ts`](../src/lib/domain/split.test.ts)               | 22    | The money rules. Includes 2,000 randomised splits                         |
+| [`compare.test.ts`](../src/lib/domain/compare.test.ts)           | 13    | The dependency-list comparison, measured rather than claimed              |
+| [`apportion.test.ts`](../src/lib/domain/apportion.test.ts)       | 12    | Splitting cents so the parts always sum to the whole                      |
+| [`imports.test.ts`](../src/lib/domain/imports.test.ts)           | 33    | Which import forms count, and what is test code                           |
+| [`people.test.ts`](../src/lib/domain/people.test.ts)             | 22    | Bot detection, shares, and that logins never leak                         |
+| [`weight.test.ts`](../src/lib/domain/weight.test.ts)             | 20    | Scoring, and the lift for a lone maintainer                               |
+| [`stage-name.test.ts`](../src/lib/domain/stage-name.test.ts)     | 11    | Keyed names: stable, and unworkable without the secret                    |
+| [`repo-ref.test.ts`](../src/lib/domain/repo-ref.test.ts)         | 21    | The repository forms people actually paste, and links to one line of code |
+| [`budget.test.ts`](../src/lib/domain/budget.test.ts)             | 13    | Amount formatting and range checks                                        |
+| [`dependencies.test.ts`](../src/lib/domain/dependencies.test.ts) | 10    | Reading a `package.json` that may be malformed                            |
+| [`text.test.ts`](../src/lib/domain/text.test.ts)                 | 5     | Counts said the way a person says them                                    |
+| [`contract.test.ts`](../src/lib/ai/contract.test.ts)             | 11    | That a hostile model reply cannot move a weight far                       |
 
 ## The server: PayPal, GitHub, npm, Groq and the endpoints
 
@@ -53,6 +53,12 @@ These replace the network with a stand-in and check what each layer sends and ho
 | [Capture endpoint](../src/app/api/orders/[orderId]/capture/route.test.ts) | 7     | Order ids, and capturing only once                                               |
 | [Reading endpoint](../src/app/api/plan/route.test.ts)                     | 7     | Streaming the steps, then the plan or a plain error                              |
 | [Webhook endpoint](../src/app/api/paypal/webhook/route.test.ts)           | 5     | Nothing acted on unless PayPal verifies the signature                            |
+
+## The browser: the ledger
+
+| Area                                                 | Tests | What it pins down                                                             |
+| ---------------------------------------------------- | ----- | ----------------------------------------------------------------------------- |
+| [`ledger.test.ts`](../src/lib/client/ledger.test.ts) | 12    | Both splits total the same budget, changes total nothing, and the CSV adds up |
 
 ## Randomised testing of the split
 

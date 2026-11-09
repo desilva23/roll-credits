@@ -10,3 +10,6 @@ coverage/
 .DS_Store
 .vercel
 *.pdf
+
+# Submission material: drafted here, pasted into Devpost, not part of the code
+/devpost/

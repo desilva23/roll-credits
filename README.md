@@ -14,6 +14,8 @@ a film-credits roll where each name lights up as PayPal confirms the money arriv
 
 Built for the PayPal AI Hackathon 2026.
 
+![The credits roll for a real sandbox payout: one maintainer's generated name lit as paid, the next waiting to be claimed](docs/screenshots/roll.jpg)
+
 ---
 
 ## The problem
@@ -23,7 +25,9 @@ for it. The obvious fix — split money across your dependency list — sends it
 app, the package imported most often was the **test runner**: 64 imports, none of them in code that ships to users.
 Splitting by imports would have paid it most.
 
-Roll Credits reads what the code actually does instead.
+Roll Credits reads what the code actually does instead. On the same app, for a $25 budget:
+
+![Against a dependency list: $9.83 to packages the code never imports, against $0.00; $0.79 to the person carrying zod alone, against $9.96](docs/screenshots/against-the-list.jpg)
 
 ## How it works
 
@@ -46,8 +50,14 @@ Roll Credits reads what the code actually does instead.
 7. **Pay them.** A PayPal order is captured, then a Payouts batch goes out and the credits roll, each name brightening
    as PayPal reports `SUCCESS`.
 
-The same reading has two views. **Credits** makes the argument. **Ledger**, built with AG Grid, is the table behind
-it: sort by what was paid, by who is carrying a project alone, or by who already has funding.
+The same reading has two views. **Credits** makes the argument, and every evidence line links to that line on
+GitHub. **Ledger**, built with AG Grid, is the table behind it, for whoever has to defend the spend: sort by what was
+paid, by who is carrying a project alone, or by who already has funding; filter to one package; follow each
+package's first use to its exact line of code; see what reading the code moved against splitting the list; and
+download it all as CSV. Its total row shows both splits coming to the same budget, so the money rule is visible
+rather than claimed.
+
+![The ledger: grouped columns, a bar for what reading the code moved, and the first use of each package linked to its line on GitHub](docs/screenshots/ledger.jpg)
 
 ## Use it from a coding agent
 
@@ -96,13 +106,13 @@ unknowable. No real maintainer was contacted, named or paid.
 
 ## Built with
 
-|             |                                                                                                                                                                                |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **PayPal**  | JS SDK v6 (`createPayPalOneTimePaymentSession`), Orders v2, Payouts, webhooks with signature verification                                                                      |
-| **AI**      | Groq — `openai/gpt-oss-120b`, falling back to `openai/gpt-oss-20b` when the larger is at its rate limit, with strict JSON-schema output. Judgements are cached for a week      |
-| **AG Grid** | AG Grid Community (MIT) for the ledger view, themed with the Theming API so it wears the page's own colours — [`src/components/LedgerGrid.tsx`](src/components/LedgerGrid.tsx) |
-| **MCP**     | A Model Context Protocol server, so coding agents can credit the people a project depends on — [`src/app/api/mcp/route.ts`](src/app/api/mcp/route.ts)                          |
-| **Stack**   | Next.js App Router, TypeScript in strict mode, Zod, Vitest, deployed on Vercel                                                                                                 |
+|             |                                                                                                                                                                                                                                                                                                                                                                        |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PayPal**  | JS SDK v6 (`createPayPalOneTimePaymentSession`), Orders v2, Payouts, webhooks with signature verification                                                                                                                                                                                                                                                              |
+| **AI**      | Groq — `openai/gpt-oss-120b`, falling back to `openai/gpt-oss-20b` when the larger is at its rate limit, with strict JSON-schema output. Judgements are cached for a week                                                                                                                                                                                              |
+| **AG Grid** | AG Grid Community (MIT) for the ledger: grouped columns, a pinned total row, quick filter, custom cell renderers for the change bars and the links to code, and CSV export, themed with the Theming API so it wears the page's own colours — [`src/components/LedgerGrid.tsx`](src/components/LedgerGrid.tsx), [`LedgerColumns.tsx`](src/components/LedgerColumns.tsx) |
+| **MCP**     | A Model Context Protocol server, so coding agents can credit the people a project depends on — [`src/app/api/mcp/route.ts`](src/app/api/mcp/route.ts)                                                                                                                                                                                                                  |
+| **Stack**   | Next.js App Router, TypeScript in strict mode, Zod, Vitest, deployed on Vercel                                                                                                                                                                                                                                                                                         |
 
 ## Where the money decisions live
 
@@ -157,7 +167,7 @@ npm run check   # formatting, linting, types and tests
 | **Innovation**                   | Pays by what the code calls, not what it lists. Favours whoever is unsupported. Names nobody without consent. Coding agents can credit what they install, with a person approving      | [`src/lib/domain/stage-name.ts`](src/lib/domain/stage-name.ts)                                                                     |
 | **Presentation**                 | The demo ends on names lighting up as PayPal confirms each payment                                                                                                                     | [`src/components/CreditsRoll.tsx`](src/components/CreditsRoll.tsx)                                                                 |
 
-345 tests. The domain logic — everything that decides money — has full statement and branch coverage, enforced by
+359 tests. The domain logic — everything that decides money — has full statement and branch coverage, enforced by
 the build. The server layer that talks to PayPal, GitHub, npm and Groq is 92% covered.
 
 ## Isn't this thanks.dev, or GitHub Sponsors?
