@@ -31,7 +31,7 @@ export default function Home(): React.JSX.Element {
 
       <p className="footer">
         Every payment is a real PayPal sandbox transaction. No real money moves. Maintainers appear under generated
-        names until they claim their profile, so nobody is labelled in public without asking them first.
+        names, so no real person is named or labelled in public.
       </p>
     </main>
   );

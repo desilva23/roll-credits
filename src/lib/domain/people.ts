@@ -8,9 +8,9 @@ export interface RawContributor {
 
 /** A maintainer as the rest of the app sees them: no login, no avatar. */
 export interface Maintainer {
-  /** Stable, derived from the login, so a claim can match without exposing it. */
+  /** Stable, keyed from the login, so one person keeps one id without the login being exposed. */
   id: string;
-  /** The generated name shown everywhere until this person claims their profile. */
+  /** The generated name shown everywhere in place of the login. */
   name: string;
   commits: number;
   /** This person's share of the commits among those counted, 0 to 1. */

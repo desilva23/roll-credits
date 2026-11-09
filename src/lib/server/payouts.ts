@@ -50,8 +50,9 @@ export async function sendPayouts(orderId: string, allocations: readonly Allocat
     // Payouts spells this `currency`. Orders v2 spells the same thing
     // `currency_code`, and sending that here fails with "may not be null".
     amount: { value: toAmountValue(a.cents), currency: "USD" },
-    // The first person has claimed their profile; the rest have not, so their
-    // money waits for them and returns to the sender after 30 days.
+    // One sandbox account stands in for a maintainer who has PayPal. The rest
+    // go to addresses with no PayPal account, so PayPal holds their money for
+    // them to claim and returns it to the sender after 30 days.
     receiver: index === 0 ? CLAIMED_RECEIVER : `unclaimed-${a.id}@example.com`,
     note: "Thank you for the code this project is built on.",
     sender_item_id: a.id,

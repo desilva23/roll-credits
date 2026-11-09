@@ -109,7 +109,7 @@ function describe(plan: PaymentPlan): string {
         `${usd(plan.lone.byListCents)} by dependency list.`,
     );
   }
-  lines.push("", "Names are generated: nobody real is named until they claim. Sandbox only.");
+  lines.push("", "Names are generated, so no real person is named. Sandbox only.");
   return lines.join("\n");
 }
 

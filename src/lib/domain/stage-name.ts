@@ -1,7 +1,7 @@
 import { createHmac } from "node:crypto";
 
 /**
- * Maintainers appear under a generated name until they claim their profile.
+ * Maintainers appear under a generated name, never their own.
  *
  * The hackathon rules make the entrant warrant that nothing published breaches
  * anyone's privacy or publicity rights. Labelling real, identifiable people as
