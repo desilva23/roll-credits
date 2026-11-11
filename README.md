@@ -63,10 +63,10 @@ rather than claimed.
 
 Coding agents install open-source packages all day and never see a sponsor button. Roll Credits is also an
 [MCP](https://modelcontextprotocol.io) server, so an agent can ask who a project depends on and open a payment for
-them. To add it to Claude Code:
+them. Add it to any MCP client that connects to remote servers over Streamable HTTP, at this address:
 
-```bash
-claude mcp add --transport http roll-credits https://roll-credits-desilva23s-projects.vercel.app/api/mcp
+```text
+https://roll-credits-desilva23s-projects.vercel.app/api/mcp
 ```
 
 Then ask, in the project you are working on: _"Who should this project credit?"_ or _"Credit the maintainers this
